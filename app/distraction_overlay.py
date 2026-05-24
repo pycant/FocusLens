@@ -1,115 +1,95 @@
-"""非模态分心提醒 — 浮动通知，不强制中断用户操作
-
-替代原项目 messagebox.showwarning() 强制弹窗问题。
-支持多种提醒方式：浮动提示、提示音、系统通知。
-"""
-import os
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton
-from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, QRect, pyqtProperty
+"""分心提醒横幅 — 嵌入主窗口内部，不开新窗口，不抢焦点"""
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QPushButton, QVBoxLayout
+from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, pyqtProperty
 from PyQt6.QtGui import QFont
-
-from config.settings import ALERT_METHODS, PROJECT_DIR
 
 
 class DistractionOverlay(QWidget):
-    """浮动分心提醒 — 非模态，自动消失
-
-    类似 toast 通知，出现在屏幕角落，
-    不会抢焦点、不会中断用户操作。
-    """
+    """嵌入主窗口底部的分心提醒横幅"""
 
     ACTION_CONTINUE = "continue"
     ACTION_PAUSE = "pause"
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.Tool
-            | Qt.WindowType.WindowStaysOnTopHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setObjectName("distractionBanner")
 
-        self._auto_close_timer = QTimer(self)
-        self._auto_close_timer.setSingleShot(True)
-        self._auto_close_timer.timeout.connect(self.fade_out)
+        # 嵌入父窗口，不设任何 windowFlags
+        self.setStyleSheet("""
+            #distractionBanner {
+                background-color: #c92a2a;
+                border-radius: 8px;
+            }
+        """)
+        self.setFixedHeight(72)
+        self.hide()
 
-        self._opacity = 1.0
+        self._result = self.ACTION_CONTINUE
         self._fade_anim: QPropertyAnimation | None = None
+        self._auto_close = QTimer(self)
+        self._auto_close.setSingleShot(True)
+        self._auto_close.timeout.connect(self.fade_out)
 
         self._build_ui()
-        self._result = self.ACTION_CONTINUE
 
     def _build_ui(self):
-        self.setFixedSize(360, 160)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(16, 8, 16, 8)
 
-        container = QWidget(self)
-        container.setObjectName("container")
-        container.setStyleSheet("""
-            #container {
-                background-color: rgba(30, 30, 30, 220);
-                border: 2px solid #ff6b35;
-                border-radius: 12px;
-            }
-        """)
-        container.setGeometry(0, 0, 360, 160)
+        icon = QLabel("⚠")
+        icon.setFont(QFont("Arial", 18))
+        icon.setStyleSheet("color: white; background: transparent;")
+        layout.addWidget(icon)
 
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(16, 12, 16, 12)
+        text_layout = QVBoxLayout()
+        self._title = QLabel("Distraction Detected")
+        self._title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        self._title.setStyleSheet("color: white; background: transparent;")
+        text_layout.addWidget(self._title)
 
-        title = QLabel("⚠️ Distraction Detected")
-        title.setFont(QFont("Arial", 13, QFont.Weight.Bold))
-        title.setStyleSheet("color: #ff6b35; background: transparent;")
-        layout.addWidget(title)
+        self._detail = QLabel("Please refocus")
+        self._detail.setFont(QFont("Arial", 9))
+        self._detail.setStyleSheet("color: #ffcccc; background: transparent;")
+        text_layout.addWidget(self._detail)
+        layout.addLayout(text_layout, stretch=1)
 
-        self._message_label = QLabel("You seem distracted. Please refocus.")
-        self._message_label.setWordWrap(True)
-        self._message_label.setStyleSheet("color: #e0e0e0; background: transparent;")
-        self._message_label.setFont(QFont("Arial", 10))
-        layout.addWidget(self._message_label)
-
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-
-        self._dismiss_btn = QPushButton("Got it")
-        self._dismiss_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #ff6b35; color: white;
-                border: none; border-radius: 6px; padding: 6px 18px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #e85d2a; }
-        """)
-        self._dismiss_btn.clicked.connect(self.fade_out)
-        btn_layout.addWidget(self._dismiss_btn)
-
-        self._pause_btn = QPushButton("Pause Detection")
+        self._pause_btn = QPushButton("Pause")
         self._pause_btn.setStyleSheet("""
             QPushButton {
-                background-color: #555; color: #ccc;
-                border: none; border-radius: 6px; padding: 6px 12px;
+                background-color: rgba(255,255,255,0.2); color: white;
+                border: 1px solid rgba(255,255,255,0.4);
+                border-radius: 4px; padding: 4px 12px; font-size: 10pt;
             }
-            QPushButton:hover { background-color: #666; color: white; }
+            QPushButton:hover { background-color: rgba(255,255,255,0.3); }
         """)
         self._pause_btn.clicked.connect(self._on_pause)
-        btn_layout.addWidget(self._pause_btn)
+        layout.addWidget(self._pause_btn)
 
-        layout.addLayout(btn_layout)
+        self._dismiss_btn = QPushButton("OK")
+        self._dismiss_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255,255,255,0.25); color: white;
+                border: none; border-radius: 4px; padding: 4px 14px; font-size: 10pt;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: rgba(255,255,255,0.4); }
+        """)
+        self._dismiss_btn.clicked.connect(self.fade_out)
+        layout.addWidget(self._dismiss_btn)
 
     def show_alert(self, degree: float, duration: float):
-        """显示分心提醒"""
         self._result = self.ACTION_CONTINUE
-        self._message_label.setText(
-            f"Distraction degree: {degree:.1f}%\n"
-            f"Duration: {duration:.1f}s\n"
-            f"Take a moment to refocus."
+        self._detail.setText(
+            f"Degree: {degree:.0f}%  |  Duration: {duration:.1f}s"
         )
-        self._auto_close_timer.stop()
-        self._auto_close_timer.start(5000)  # 5 秒后自动消失
+        self._auto_close.stop()
+        self._auto_close.start(5000)
+
+        if self._fade_anim:
+            self._fade_anim.stop()
+
         self.setWindowOpacity(1.0)
         self.show()
-        self.raise_()
 
     def fade_out(self):
         if self._fade_anim and self._fade_anim.state() == QPropertyAnimation.State.Running:
@@ -118,8 +98,15 @@ class DistractionOverlay(QWidget):
         self._fade_anim.setDuration(400)
         self._fade_anim.setStartValue(1.0)
         self._fade_anim.setEndValue(0.0)
-        self._fade_anim.finished.connect(self.hide)
+        self._fade_anim.finished.connect(self._hide_safe)
         self._fade_anim.start()
+
+    def _hide_safe(self):
+        try:
+            self.hide()
+            self.setWindowOpacity(1.0)
+        except Exception:
+            pass
 
     def _on_pause(self):
         self._result = self.ACTION_PAUSE
@@ -128,11 +115,8 @@ class DistractionOverlay(QWidget):
     def get_result(self) -> str:
         return self._result
 
-    # 动画属性
-    def get_window_opacity(self):
-        return self.windowOpacity()
-
-    def set_window_opacity(self, value):
-        self.setWindowOpacity(value)
-
-    windowOpacity = pyqtProperty(float, get_window_opacity, set_window_opacity)
+    windowOpacity = pyqtProperty(
+        float,
+        lambda self: QWidget.windowOpacity(self),
+        lambda self, v: QWidget.setWindowOpacity(self, v),
+    )

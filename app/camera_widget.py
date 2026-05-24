@@ -1,25 +1,44 @@
 """摄像头画面显示组件 + 检测线程"""
+import os
 import traceback
 import cv2
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtGui import QImage, QPixmap
 
+# QPixmap 不是线程安全的，工作线程只传 QImage
+# 主线程再转成 QPixmap
+
 from core.detector import EyeDetector
 from core.distraction_engine import DistractionEngine, FocusState
 from core.camera_manager import CameraManager
 from config.settings import FocusCamSettings
 
+# 崩溃日志文件（用于捕获 C++ 层闪退）
+_CRASH_LOG = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "crash_debug.log",
+)
+
+
+def _log_debug(msg: str):
+    """写入调试日志，捕获 Python 无法拦截的 C++ 崩溃"""
+    try:
+        with open(_CRASH_LOG, "a") as f:
+            f.write(f"{msg}\n")
+    except Exception:
+        pass
+
 
 class DetectionWorker(QThread):
     """后台检测线程 — 持续读取摄像头 + MediaPipe 处理"""
 
-    frame_ready = pyqtSignal(object)  # QPixmap
-    status_update = pyqtSignal(str, str)  # (status_text, color)
-    distraction_alert = pyqtSignal(float, float)  # (degree, duration)
-    distraction_start = pyqtSignal(float, float)  # (degree, duration)
+    frame_ready = pyqtSignal(QImage)  # QImage 线程安全，QPixmap 不是
+    status_update = pyqtSignal(str, str)
+    distraction_alert = pyqtSignal(float, float)
+    distraction_start = pyqtSignal(float, float)
     distraction_end = pyqtSignal()
-    thread_error = pyqtSignal(str)  # 错误消息
+    thread_error = pyqtSignal(str)
 
     def __init__(self, settings: FocusCamSettings, parent=None):
         super().__init__(parent)
@@ -29,24 +48,33 @@ class DetectionWorker(QThread):
         self._camera = CameraManager(settings.camera_id)
         self._engine = DistractionEngine(settings)
 
-        # Connect engine callbacks
         self._engine.on_distraction_start = self._on_distraction_start
         self._engine.on_distraction_end = self._on_distraction_end
         self._engine.on_alert = self._on_alert
+
+        # 信号限流：防止主线程来不及处理
+        self._frame_skip_counter = 0
+        self._alert_pending = False
 
     def _on_distraction_start(self, event):
         self.distraction_start.emit(event.degree, event.duration)
 
     def _on_distraction_end(self):
+        self._alert_pending = False
         self.distraction_end.emit()
 
     def _on_alert(self, event):
-        self.distraction_alert.emit(event.degree, event.duration)
+        # 限流：如果上一个提醒还没处理完，跳过
+        if not self._alert_pending:
+            self._alert_pending = True
+            self.distraction_alert.emit(event.degree, event.duration)
 
     def run(self):
+        _log_debug("[WORKER] started")
         try:
             self._camera.open(self.settings.camera_id)
             self._running = True
+            _log_debug("[WORKER] camera opened")
 
             while self._running:
                 try:
@@ -61,7 +89,6 @@ class DetectionWorker(QThread):
                         self.msleep(10)
                         continue
 
-                    # --- 检测逻辑（原项目核心算法） ---
                     results = self._detector.process_frame(frame)
                     face_detected = False
                     eyes_open = False
@@ -74,14 +101,11 @@ class DetectionWorker(QThread):
                                 face_landmarks, self.settings.eye_openness_threshold
                             )
 
-                    # 更新分心状态机
                     state = self._engine.update(face_detected, eyes_open)
 
-                    # 镜像显示
                     if self.settings.mirror_display:
                         frame = cv2.flip(frame, 1)
 
-                    # 状态标签
                     if state == FocusState.FOCUSED:
                         self.status_update.emit("Status: Focused ✅", "green")
                     elif state == FocusState.EYES_CLOSED:
@@ -95,27 +119,31 @@ class DetectionWorker(QThread):
                             "red",
                         )
 
-                    # 发送帧到 UI
-                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    h, w, ch = rgb.shape
-                    bytes_per_line = ch * w
-                    qimg = QImage(rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
-                    pixmap = QPixmap.fromImage(qimg)
-                    self.frame_ready.emit(pixmap)
+                    # 每 3 帧发一次画面（降低信号频率）
+                    self._frame_skip_counter += 1
+                    if self._frame_skip_counter >= 3:
+                        self._frame_skip_counter = 0
+                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        h, w, ch = rgb.shape
+                        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
+                        self.frame_ready.emit(qimg.copy())  # copy() 确保数据独立
 
-                    self.msleep(30)  # ~33 FPS
+                    self.msleep(30)
 
                 except Exception as e:
-                    # 单帧处理异常不崩溃线程，记录后继续
-                    self.status_update.emit(f"Frame error: {e}", "red")
+                    self.status_update.emit(f"Frame error", "red")
+                    _log_debug(f"[WORKER] frame loop error: {e}")
                     self.msleep(100)
 
         except Exception as e:
-            # 严重错误：通知 UI 线程
             tb = traceback.format_exc()
+            _log_debug(f"[WORKER] fatal error: {e}")
             self.thread_error.emit(f"Detection thread crashed:\n{tb}")
         finally:
+            _log_debug("[WORKER] cleanup start")
             self._cleanup()
+            self._alert_pending = False
+            _log_debug("[WORKER] cleanup done")
 
     def _cleanup(self):
         try:
@@ -130,7 +158,6 @@ class DetectionWorker(QThread):
     def stop(self):
         self._running = False
         if not self.wait(2000):
-            # 如果 2 秒后线程还没退出，强制终止
             self.terminate()
 
     def update_settings(self, settings: FocusCamSettings):
@@ -154,7 +181,6 @@ class CameraWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._worker: DetectionWorker | None = None
-        self._cleanup_timer_running = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -175,7 +201,7 @@ class CameraWidget(QWidget):
     def stop_detection(self):
         if self._worker:
             w = self._worker
-            self._worker = None  # 先断开引用
+            self._worker = None
             if w.isRunning():
                 w.stop()
         self._video_label.clear()
@@ -184,7 +210,8 @@ class CameraWidget(QWidget):
         print(f"[FocusCam Worker Error] {msg}")
         self.stop_detection()
 
-    def _display_frame(self, pixmap: QPixmap):
+    def _display_frame(self, qimg: QImage):
+        pixmap = QPixmap.fromImage(qimg)
         scaled = pixmap.scaled(
             self._video_label.size(),
             Qt.AspectRatioMode.KeepAspectRatio,

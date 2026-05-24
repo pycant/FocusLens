@@ -33,7 +33,6 @@ class MainWindow(QMainWindow):
         # 配置和日志
         self._settings = FocusCamSettings.load()
         self._logger = DistractionLogger()
-        self._distraction_overlay: DistractionOverlay | None = None
 
         # 自动使用上次登录用户（无需弹登录框）
         self._username = self._settings.last_username or DEFAULT_USER
@@ -152,6 +151,11 @@ class MainWindow(QMainWindow):
         self._camera_widget = CameraWidget()
         left_layout.addWidget(self._camera_widget, stretch=1)
 
+        # 分心提醒横幅（嵌入主窗口，不开新窗口）
+        self._distraction_banner = DistractionOverlay()
+        self._distraction_banner.hide()
+        left_layout.addWidget(self._distraction_banner)
+
         # 右侧统计面板
         self._stats_widget = StatisticsWidget()
         self._stats_widget.setFixedWidth(220)
@@ -186,7 +190,7 @@ class MainWindow(QMainWindow):
 
         self._settings.camera_id = self._cam_combo.currentData()
 
-        self._distraction_overlay = DistractionOverlay(self)
+        # overlay now embedded as self._distraction_banner in _build_central
 
         self._camera_widget.start_detection(self._settings)
         worker = self._camera_widget.worker
@@ -208,8 +212,8 @@ class MainWindow(QMainWindow):
         self._start_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
         self._cam_combo.setEnabled(True)
-        if self._distraction_overlay:
-            self._distraction_overlay.hide()
+        if self._distraction_banner:
+            self._distraction_banner.hide()
         self._status_bar.showMessage("Detection stopped")
 
     def _switch_camera(self):
@@ -274,16 +278,20 @@ class MainWindow(QMainWindow):
         self._stats_widget.update_state(text)
 
     def _on_distraction_alert(self, degree: float, duration: float):
-        if self._distraction_overlay:
-            self._distraction_overlay.show_alert(degree, duration)
+        try:
+            if self._distraction_banner:
+                self._distraction_banner.show_alert(degree, duration)
 
-        method = self._settings.alert_method
-        if method in ("sound", "toast_and_sound"):
-            self._play_alert_sound()
+            method = self._settings.alert_method
+            if method in ("sound", "toast_and_sound"):
+                self._play_alert_sound()
 
-        if self._settings.log_to_csv:
-            state = "eyes_closed" if self._stats_widget.is_eyes_closed_state() else "no_face"
-            self._logger.log(f"Distraction: {state}", degree, duration)
+            if self._settings.log_to_csv:
+                state = "eyes_closed" if self._stats_widget.is_eyes_closed_state() else "no_face"
+                self._logger.log(f"Distraction: {state}", degree, duration)
+        except Exception as e:
+            import traceback
+            print(f"[FocusCam] Alert error: {e}\n{traceback.format_exc()}")
 
     def _on_distraction_start(self, degree: float, duration: float):
         self._stats_widget.increment_distraction()
@@ -300,18 +308,13 @@ class MainWindow(QMainWindow):
         pass
 
     def _play_alert_sound(self):
+        """播放提示音 — 简单可靠"""
         try:
-            sound_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "resources", "sounds", "alert.wav",
-            )
-            if os.path.exists(sound_path):
-                import winsound
-                winsound.PlaySound(sound_path, winsound.SND_ASYNC)
-            else:
-                QApplication.beep()
+            import winsound
+            winsound.Beep(880, 120)
+            winsound.Beep(660, 120)
         except Exception:
-            QApplication.beep()
+            pass  # 声音失败不影响主程序
 
     def _sync_stats(self):
         if self._camera_widget and self._camera_widget.worker:

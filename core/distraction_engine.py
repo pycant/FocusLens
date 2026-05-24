@@ -104,11 +104,10 @@ class DistractionEngine:
         elapsed = now - self.state_start_time if self.state_start_time else 0
 
         if self.current_state == FocusState.FOCUSED:
-            # 专注状态：分心程度衰减
-            self._distraction_degree = max(
-                0.0,
-                self._distraction_degree - self.settings.distraction_decay_rate * dt,
-            )
+            # 专注状态：分心程度衰减（程度越高衰减越快）
+            level = self._distraction_degree / 100.0
+            decay = self.settings.distraction_decay_rate * (1.0 + level) * dt
+            self._distraction_degree = max(0.0, self._distraction_degree - decay * 5)
             return FocusState.FOCUSED
 
         # 分心状态：累积分心程度
@@ -117,8 +116,8 @@ class DistractionEngine:
         else:  # NO_FACE
             weight = self.settings.no_face_weight
 
-        # 分心程度 = 权重 × 持续时间（每秒增加）
-        self._distraction_degree += weight * dt * 10  # 归一化到 0-100 尺度
+        # 分心程度 = 权重 × 持续时间，上限 100
+        self._distraction_degree = min(100.0, self._distraction_degree + weight * dt * 5)
 
         # 4. 触发分心事件
         if not self.is_distracted and elapsed >= self.settings.distraction_time_threshold:
