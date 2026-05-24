@@ -54,8 +54,19 @@ class FocusCamSettings:
     log_to_csv: bool = True
     log_to_db: bool = False
 
+    # --- 自动化设置 ---
+    auto_start_on_boot: bool = False
+    schedule_enabled: bool = False
+    schedule_start_hour: int = 9
+    schedule_start_minute: int = 0
+    schedule_end_hour: int = 17
+    schedule_end_minute: int = 0
+    schedule_work_minutes: int = 25
+    schedule_break_minutes: int = 5
+
     # --- 显示设置 ---
     theme_name: str = "classic_light"
+    side_panel_visible: bool = True
 
     @classmethod
     def load(cls) -> "FocusCamSettings":

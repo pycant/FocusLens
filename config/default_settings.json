@@ -14,5 +14,14 @@
   "mirror_display": true,
   "log_to_csv": true,
   "log_to_db": false,
-  "theme_name": "classic_light"
+  "auto_start_on_boot": false,
+  "schedule_enabled": false,
+  "schedule_start_hour": 9,
+  "schedule_start_minute": 0,
+  "schedule_end_hour": 17,
+  "schedule_end_minute": 0,
+  "schedule_work_minutes": 25,
+  "schedule_break_minutes": 5,
+  "theme_name": "classic_light",
+  "side_panel_visible": true
 }

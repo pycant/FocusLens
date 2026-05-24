@@ -1,133 +1,169 @@
-"""分心统计面板 — 显示当前会话的专注统计"""
-import os
-import time
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout
+"""胶囊式统计面板 — 仪表盘 + 折叠日志"""
+import os, time
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QPushButton, QProgressBar, QFrame,
+)
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont, QPixmap, QIcon
+from PyQt6.QtGui import QFont, QPainter, QColor
+
+from app.focus_gauge import ArcGauge
+from app.session_log import SessionLog
+
+
+class CapsuleLabel(QLabel):
+    """胶囊式信息标签"""
+    def __init__(self, text="", color="#3b82f6", parent=None):
+        super().__init__(text, parent)
+        self._bg = color
+        self.setStyleSheet(f"""
+            background-color: {color}22;
+            border: 1px solid {color}44;
+            border-radius: 10px;
+            padding: 4px 10px;
+            font-size: 9pt;
+        """)
+        self.setWordWrap(True)
 
 
 class StatisticsWidget(QWidget):
-    """专注度统计面板
-
-    显示：
-    - 当前分心程度（进度条 + 百分比）
-    - 本次专注时长
-    - 分心次数
-    - 当前状态文字
-    """
+    """专注度统计面板 — 胶囊式布局 + 可折叠仪表盘 + 事件日志"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._distraction_count = 0
         self._session_started = False
         self._session_start_time = 0.0
+        self._gauges_visible = True
         self._degree = 0.0
 
-        self.setStyleSheet("""
-            StatisticsWidget {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
+        self.setMinimumWidth(200)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(6)
 
+        # ── 标题行 ──
         title_row = QHBoxLayout()
-        try:
-            from app.main_window import _current_theme as _ct
-            from app.theme import colored_icon as _ci
-            icon = _ci(_ct, "chart")
-        except Exception:
-            from PyQt6.QtGui import QIcon as _qi
-            icon = _qi()
-        ti = QLabel()
-        ti.setPixmap(icon.pixmap(18, 18))
-        ti.setStyleSheet("background: transparent;")
-        title_row.addWidget(ti)
-        title = QLabel("Focus Statistics")
-        title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        title_row.addWidget(title)
+        title_row.setContentsMargins(4, 0, 4, 0)
+
+        self._toggle_gauges_btn = QPushButton("📊 Focus Statistics  ▼")
+        self._toggle_gauges_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent; border: none;
+                text-align: left; font-weight: bold; font-size: 10pt;
+                padding: 2px 0;
+            }
+            QPushButton:hover { color: #3b82f6; }
+        """)
+        self._toggle_gauges_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._toggle_gauges_btn.clicked.connect(self._toggle_gauges)
+        title_row.addWidget(self._toggle_gauges_btn)
         title_row.addStretch()
         layout.addLayout(title_row)
 
-        # 分心程度进度条
-        degree_layout = QVBoxLayout()
-        self._degree_label = QLabel("Distraction Level: 0%")
-        self._degree_label.setFont(QFont("Arial", 9))
-        degree_layout.addWidget(self._degree_label)
+        # ── 仪表盘区域（可折叠） ──
+        self._gauges_widget = QWidget()
+        self._gauges_widget.setStyleSheet("background: transparent;")
+        gauges_layout = QHBoxLayout(self._gauges_widget)
+        gauges_layout.setContentsMargins(2, 2, 2, 6)
+        gauges_layout.setSpacing(4)
 
-        self._degree_bar = QProgressBar()
-        self._degree_bar.setRange(0, 100)
-        self._degree_bar.setValue(0)
-        self._degree_bar.setTextVisible(False)
-        self._degree_bar.setFixedHeight(12)
-        self._degree_bar.setStyleSheet("""
-            QProgressBar {
-                background: #e9ecef; border: none; border-radius: 6px;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #51cf66, stop:0.5 #fcc419, stop:1 #ff6b35);
-                border-radius: 6px;
-            }
-        """)
-        degree_layout.addWidget(self._degree_bar)
-        layout.addLayout(degree_layout)
+        self._focus_gauge = ArcGauge("Focus Score", 0, 100, "#22c55e")
+        gauges_layout.addWidget(self._focus_gauge)
 
-        # 统计信息
-        self._focus_time_label = QLabel("Focus Time: 0s")
-        self._focus_time_label.setFont(QFont("Arial", 9))
-        layout.addWidget(self._focus_time_label)
+        self._time_gauge = ArcGauge("Session", 0, 100, "#3b82f6")
+        gauges_layout.addWidget(self._time_gauge)
 
-        self._distraction_count_label = QLabel("Distractions: 0")
-        self._distraction_count_label.setFont(QFont("Arial", 9))
-        layout.addWidget(self._distraction_count_label)
+        self._density_gauge = ArcGauge("Density", 0, 100, "#f59e0b")
+        gauges_layout.addWidget(self._density_gauge)
 
-        self._state_label = QLabel("State: Idle")
-        self._state_label.setStyleSheet("color: #868e96;")
-        self._state_label.setFont(QFont("Arial", 9))
-        layout.addWidget(self._state_label)
+        layout.addWidget(self._gauges_widget)
 
-        layout.addStretch()
+        # ── 胶囊信息行 ──
+        info_row = QHBoxLayout()
+        info_row.setSpacing(4)
+        self._distraction_cap = CapsuleLabel("⚠ 0 distractions", "#f59e0b")
+        info_row.addWidget(self._distraction_cap)
+        self._state_cap = CapsuleLabel("○ Idle", "#6b7280")
+        info_row.addWidget(self._state_cap)
+        info_row.addStretch()
+        layout.addLayout(info_row)
 
-        # 计时更新
+        # 专注时长
+        self._focus_time_cap = CapsuleLabel("⏱ 0s", "#3b82f6")
+        layout.addWidget(self._focus_time_cap)
+
+        # ── 分隔线 ──
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet("color: rgba(128,128,128,0.2);")
+        layout.addWidget(sep)
+
+        # ── 事件日志 ──
+        self._log = SessionLog()
+        layout.addWidget(self._log, stretch=1)
+
+        # 计时器
         self._timer = QTimer(self)
-        self._timer.timeout.connect(self._update_focus_time)
+        self._timer.timeout.connect(self._update_time)
         self._timer.start(1000)
+
+    def _toggle_gauges(self):
+        self._gauges_visible = not self._gauges_visible
+        self._gauges_widget.setVisible(self._gauges_visible)
+        self._toggle_gauges_btn.setText(
+            "📊 Focus Statistics  ▼" if self._gauges_visible else "📊 Focus Statistics  ▶"
+        )
 
     def reset_session(self):
         self._distraction_count = 0
         self._session_started = True
         self._session_start_time = time.time()
         self._degree = 0.0
+        self._focus_gauge.setValue(0)
+        self._time_gauge.setValue(0)
+        self._density_gauge.setValue(0)
+        self._log.add_event("Session started")
 
     def increment_distraction(self):
         self._distraction_count += 1
-        self._distraction_count_label.setText(
-            f"Distractions: {self._distraction_count}"
-        )
+        self._distraction_cap.setText(f"⚠ {self._distraction_count} distractions")
+        self._log.add_event("Distraction detected")
 
     def update_degree(self, degree: float):
         self._degree = degree
-        self._degree_bar.setValue(int(degree))
-        color = "green" if degree < 30 else ("orange" if degree < 60 else "red")
-        self._degree_label.setText(
-            f'Distraction Level: <span style="color:{color}">{degree:.0f}%</span>'
-        )
-        self._degree_label.setTextFormat(Qt.TextFormat.RichText)
+        self._focus_gauge.setValue(100 - degree)  # 100-degree = focus score
 
     def update_state(self, state_text: str):
-        self._state_label.setText(state_text)
+        # 解析状态文本着色
+        if "Focused" in state_text:
+            color = "#22c55e"
+            icon = "●"
+        elif "Eyes Closed" in state_text or "No Face" in state_text:
+            color = "#ef4444"
+            icon = "○"
+        else:
+            color = "#6b7280"
+            icon = "○"
+        self._state_cap.setStyleSheet(f"""
+            background-color: {color}22;
+            border: 1px solid {color}44;
+            border-radius: 10px;
+            padding: 4px 10px;
+            font-size: 9pt;
+        """)
+        self._state_cap.setText(f"{icon} {state_text.replace('Status: ', '')}")
 
-    def is_eyes_closed_state(self) -> bool:
-        """当前状态是否为闭眼"""
-        return "Eyes" in self._state_label.text()
+    def update_density(self, density: float):
+        self._density_gauge.setValue(density)
 
-    def _update_focus_time(self):
+    def log_event(self, msg: str):
+        self._log.add_event(msg)
+
+    def _update_time(self):
         if self._session_started and self._session_start_time > 0:
             elapsed = int(time.time() - self._session_start_time)
-            self._focus_time_label.setText(f"Focus Time: {elapsed}s")
+            self._focus_time_cap.setText(f"⏱ {elapsed}s")
+            # session gauge: cap at 1 hour
+            self._time_gauge.setValue(min(100, elapsed / 36))
