@@ -99,18 +99,16 @@ class DetectionWorker(QThread):
                     if self.settings.mirror_display:
                         frame = cv2.flip(frame, 1)
 
-                    if state == FocusState.FOCUSED:
-                        self.status_update.emit("Status: Focused ✅", "green")
-                    elif state == FocusState.EYES_CLOSED:
+                    # UI 显示基于真实检测结果，不是引擎状态
+                    if not face_detected:
+                        self.status_update.emit("Status: No Face", "red")
+                    elif not eyes_open:
                         self.status_update.emit(
                             f"Status: Eyes Closed ({self._engine.get_state_duration():.1f}s)",
                             "orange",
                         )
                     else:
-                        self.status_update.emit(
-                            f"Status: No Face ({self._engine.get_state_duration():.1f}s)",
-                            "red",
-                        )
+                        self.status_update.emit("Status: Focused ✅", "green")
 
                     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     h, w, ch = rgb.shape
