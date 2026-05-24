@@ -197,20 +197,13 @@ class StatisticsWidget(QWidget):
         s1.layout().addWidget(self._degree_label)
         layout.addWidget(s1)
 
-        # ── 2. 胶囊信息行 ──
-        cap_row = QHBoxLayout()
-        cap_row.setSpacing(4)
-
+        # ── 2. 胶囊信息（每个占一整行，自适应宽度） ──
         self._distraction_cap = CapsuleLabel("0 distractions", "#f59e0b")
-        cap_row.addWidget(self._distraction_cap)
+        layout.addWidget(self._distraction_cap)
 
         self._state_cap = CapsuleLabel("Idle", "#6b7280")
-        cap_row.addWidget(self._state_cap)
+        layout.addWidget(self._state_cap)
 
-        cap_row.addStretch()
-        layout.addLayout(cap_row)
-
-        # ── 专注时间（单独一行，胶囊下方） ──
         self._focus_time_cap = CapsuleLabel("Focus Time: 0s", "#22c55e")
         layout.addWidget(self._focus_time_cap)
 
