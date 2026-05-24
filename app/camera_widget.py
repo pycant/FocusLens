@@ -173,7 +173,8 @@ class CameraWidget(QWidget):
 
         self._video_label = QLabel()
         self._video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._video_label.setStyleSheet("background-color: #1e1e1e; border-radius: 8px;")
+        self._camera_bg = "#1e1e1e"
+        self._video_label.setStyleSheet(f"background-color: {self._camera_bg}; border-radius: 8px;")
         self._video_label.setMinimumSize(640, 480)
         layout.addWidget(self._video_label)
 
@@ -208,6 +209,12 @@ class CameraWidget(QWidget):
     @property
     def worker(self) -> DetectionWorker | None:
         return self._worker
+
+    def set_bg_color(self, color_hex: str):
+        self._camera_bg = color_hex
+        self._video_label.setStyleSheet(
+            f"background-color: {color_hex}; border-radius: 8px;"
+        )
 
     def closeEvent(self, event):
         self.stop_detection()

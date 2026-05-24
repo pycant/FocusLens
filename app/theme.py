@@ -33,6 +33,31 @@ THEMES = {
 # ── 各主题配色 ──────────────────────────────────────────
 
 _COLORS = {
+    "classic_light": {
+        "window": QColor(245, 245, 245),
+        "window_text": QColor(30, 30, 30),
+        "base": QColor(255, 255, 255),
+        "alternate_base": QColor(238, 238, 238),
+        "tooltip_base": QColor(240, 240, 240),
+        "tooltip_text": QColor(30, 30, 30),
+        "text": QColor(30, 30, 30),
+        "button": QColor(235, 235, 235),
+        "button_text": QColor(30, 30, 30),
+        "bright_text": QColor(255, 255, 255),
+        "link": QColor(0, 100, 200),
+        "highlight": QColor(60, 140, 230),
+        "highlighted_text": QColor(255, 255, 255),
+        "disabled_text": QColor(140, 140, 140),
+        "disabled_button": QColor(215, 215, 215),
+        "disabled_button_text": QColor(160, 160, 160),
+        "mid": QColor(200, 200, 200),
+        "midlight": QColor(210, 210, 210),
+        "dark": QColor(180, 180, 180),
+        "shadow": QColor(140, 140, 140),
+        "accent": QColor(60, 140, 230),
+        "surface": QColor(255, 255, 255),
+        "camera_bg": QColor(30, 30, 30),
+    },
     "dark": {
         "window": QColor(35, 39, 43),
         "window_text": QColor(220, 220, 220),
@@ -56,6 +81,7 @@ _COLORS = {
         "shadow": QColor(15, 18, 22),
         "accent": QColor(60, 120, 220),
         "surface": QColor(43, 48, 53),
+        "camera_bg": QColor(20, 22, 25),
     },
     "midnight": {
         "window": QColor(22, 28, 43),
@@ -80,6 +106,7 @@ _COLORS = {
         "shadow": QColor(10, 14, 22),
         "accent": QColor(60, 140, 240),
         "surface": QColor(28, 35, 55),
+        "camera_bg": QColor(14, 18, 28),
     },
     "forest": {
         "window": QColor(30, 38, 30),
@@ -104,6 +131,7 @@ _COLORS = {
         "shadow": QColor(12, 18, 12),
         "accent": QColor(60, 180, 80),
         "surface": QColor(38, 48, 38),
+        "camera_bg": QColor(18, 24, 18),
     },
     "charcoal": {
         "window": QColor(25, 25, 25),
@@ -128,6 +156,7 @@ _COLORS = {
         "shadow": QColor(8, 8, 8),
         "accent": QColor(200, 200, 200),
         "surface": QColor(33, 33, 33),
+        "camera_bg": QColor(15, 15, 15),
     },
 }
 
@@ -314,3 +343,20 @@ def apply_theme(app: QApplication, theme_name: str):
     meta = THEMES.get(theme_name, THEMES["classic_light"])
     app.setPalette(_build_palette(theme_name))
     app.setStyleSheet(_qss(theme_name))
+
+
+def get_camera_bg(theme_name: str) -> str:
+    c = _COLORS.get(theme_name, _COLORS["classic_light"])
+    return c["camera_bg"].name()
+
+
+def make_button_style(base_color: str, hover_color: str, disabled_color: str = "#adb5bd") -> str:
+    return f"""
+        QPushButton {{
+            background-color: {base_color}; color: white;
+            border: none; border-radius: 6px; padding: 6px 16px;
+            font-weight: bold;
+        }}
+        QPushButton:hover {{ background-color: {hover_color}; }}
+        QPushButton:disabled {{ background-color: {disabled_color}; }}
+    """

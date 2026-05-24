@@ -16,7 +16,7 @@ from app.settings_dialog import SettingsDialog
 from app.login_dialog import LoginDialog
 from app.distraction_overlay import DistractionOverlay
 from app.statistics_widget import StatisticsWidget
-from app.theme import apply_theme, THEMES, get_theme_label
+from app.theme import apply_theme, THEMES, get_camera_bg, make_button_style
 from utils.logger import DistractionLogger
 
 DEFAULT_USER = "Default User"
@@ -41,6 +41,9 @@ class MainWindow(QMainWindow):
         self._build_menu_bar()
         self._build_central()
         self._build_status_bar()
+
+        # 应用按钮配色
+        self._apply_widget_styles()
 
         # 定时器：同步统计信息
         self._stats_timer = QTimer(self)
@@ -111,40 +114,15 @@ class MainWindow(QMainWindow):
         cam_row.addStretch()
 
         self._start_btn = QPushButton("▶ Start Detection")
-        self._start_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2b8a3e; color: white;
-                border: none; border-radius: 6px; padding: 6px 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #2f9e44; }
-            QPushButton:disabled { background-color: #adb5bd; }
-        """)
         self._start_btn.clicked.connect(self._start_detection)
         cam_row.addWidget(self._start_btn)
 
         self._stop_btn = QPushButton("■ Stop")
-        self._stop_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e8590c; color: white;
-                border: none; border-radius: 6px; padding: 6px 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #f76707; }
-            QPushButton:disabled { background-color: #adb5bd; }
-        """)
         self._stop_btn.clicked.connect(self._stop_detection)
         self._stop_btn.setEnabled(False)
         cam_row.addWidget(self._stop_btn)
 
         self._settings_btn = QPushButton("⚙ Settings")
-        self._settings_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #5c7cfa; color: white;
-                border: none; border-radius: 6px; padding: 6px 12px;
-            }
-            QPushButton:hover { background-color: #748ffc; }
-        """)
         self._settings_btn.clicked.connect(self._show_settings)
         cam_row.addWidget(self._settings_btn)
 
@@ -179,6 +157,16 @@ class MainWindow(QMainWindow):
         self._update_user_label()
         self._user_label.setStyleSheet("padding-right: 8px;")
         self._status_bar.addPermanentWidget(self._user_label)
+
+    def _apply_widget_styles(self):
+        """根据当前主题更新按钮和摄像头背景色"""
+        theme = self._settings.theme_name
+        self._start_btn.setStyleSheet(make_button_style("#2b8a3e", "#2f9e44"))
+        self._stop_btn.setStyleSheet(make_button_style("#e8590c", "#f76707"))
+        self._settings_btn.setStyleSheet(make_button_style("#5c7cfa", "#748ffc"))
+        # 摄像头背景
+        if hasattr(self, "_camera_widget"):
+            self._camera_widget.set_bg_color(get_camera_bg(theme))
 
     def _update_user_label(self):
         name = self._username or DEFAULT_USER
@@ -259,6 +247,7 @@ class MainWindow(QMainWindow):
             for key, a in self._theme_actions.items():
                 a.setChecked(key == self._settings.theme_name)
             apply_theme(QApplication.instance(), self._settings.theme_name)
+            self._apply_widget_styles()
             if self._camera_widget and self._camera_widget.worker:
                 self._camera_widget.worker.update_settings(self._settings)
 
@@ -266,6 +255,8 @@ class MainWindow(QMainWindow):
         self._settings.theme_name = theme_name
         for key, a in self._theme_actions.items():
             a.setChecked(key == theme_name)
+        apply_theme(QApplication.instance(), theme_name)
+        self._apply_widget_styles()
         apply_theme(QApplication.instance(), theme_name)
         self._settings.save()
 
