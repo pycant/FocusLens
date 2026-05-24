@@ -195,6 +195,7 @@ class MainWindow(QMainWindow):
             worker.distraction_alert.connect(self._on_distraction_alert)
             worker.distraction_start.connect(self._on_distraction_start)
             worker.distraction_end.connect(self._on_distraction_end)
+            worker.thread_error.connect(self._on_worker_error)
 
         self._start_btn.setEnabled(False)
         self._stop_btn.setEnabled(True)
@@ -288,6 +289,12 @@ class MainWindow(QMainWindow):
         self._stats_widget.increment_distraction()
         if self._settings.log_to_csv:
             self._logger.log("Distraction started", degree, duration)
+
+    def _on_worker_error(self, msg: str):
+        """检测线程崩溃时，自动停止并提示用户"""
+        self._stop_detection()
+        self._status_bar.showMessage("Detection stopped (thread error)")
+        print(f"[FocusCam] Worker error: {msg}")
 
     def _on_distraction_end(self):
         pass
