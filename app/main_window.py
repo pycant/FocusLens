@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
 )
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QAction, QFont
+from PyQt6.QtGui import QAction, QFont, QIcon
 
 from config.settings import FocusCamSettings
 from core.camera_manager import get_available_cameras
@@ -20,6 +20,11 @@ from app.theme import apply_theme, THEMES, get_camera_bg, make_button_style
 from utils.logger import DistractionLogger
 
 DEFAULT_USER = "Default User"
+ICONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "icons")
+
+
+def _icon(name: str) -> QIcon:
+    return QIcon(os.path.join(ICONS_DIR, f"{name}.svg"))
 
 
 class MainWindow(QMainWindow):
@@ -28,6 +33,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("FocusCam")
+        self.setWindowIcon(_icon("focus"))
         self.setMinimumSize(900, 620)
 
         # 配置和日志
@@ -57,20 +63,24 @@ class MainWindow(QMainWindow):
 
         user_menu = menubar.addMenu("User")
         switch_action = QAction("Switch User...", self)
+        switch_action.setIcon(_icon("user"))
         switch_action.triggered.connect(self._switch_user)
         user_menu.addAction(switch_action)
 
         register_action = QAction("Register New User (Face Capture)...", self)
+        register_action.setIcon(_icon("user"))
         register_action.triggered.connect(self._register_user)
         user_menu.addAction(register_action)
         user_menu.addSeparator()
 
         settings_action = QAction("Settings...", self)
+        settings_action.setIcon(_icon("settings"))
         settings_action.triggered.connect(self._show_settings)
         user_menu.addAction(settings_action)
         user_menu.addSeparator()
 
         exit_action = QAction("Exit", self)
+        exit_action.setIcon(_icon("stop"))
         exit_action.triggered.connect(self.close)
         user_menu.addAction(exit_action)
 
@@ -113,16 +123,22 @@ class MainWindow(QMainWindow):
         cam_row.addWidget(self._cam_combo)
         cam_row.addStretch()
 
-        self._start_btn = QPushButton("▶ Start Detection")
+        self._start_btn = QPushButton(" Start Detection")
+        self._start_btn.setIcon(_icon("play"))
+        self._start_btn.setIconSize(Qt.QSize(16, 16))
         self._start_btn.clicked.connect(self._start_detection)
         cam_row.addWidget(self._start_btn)
 
-        self._stop_btn = QPushButton("■ Stop")
+        self._stop_btn = QPushButton(" Stop")
+        self._stop_btn.setIcon(_icon("stop"))
+        self._stop_btn.setIconSize(Qt.QSize(16, 16))
         self._stop_btn.clicked.connect(self._stop_detection)
         self._stop_btn.setEnabled(False)
         cam_row.addWidget(self._stop_btn)
 
-        self._settings_btn = QPushButton("⚙ Settings")
+        self._settings_btn = QPushButton(" Settings")
+        self._settings_btn.setIcon(_icon("settings"))
+        self._settings_btn.setIconSize(Qt.QSize(16, 16))
         self._settings_btn.clicked.connect(self._show_settings)
         cam_row.addWidget(self._settings_btn)
 
@@ -153,6 +169,11 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage("Ready — click Start Detection to begin")
         self.setStatusBar(self._status_bar)
 
+        self._user_icon = QLabel()
+        self._user_icon.setPixmap(_icon("user").pixmap(16, 16))
+        self._user_icon.setStyleSheet("padding-right: 2px;")
+        self._status_bar.addPermanentWidget(self._user_icon)
+
         self._user_label = QLabel()
         self._update_user_label()
         self._user_label.setStyleSheet("padding-right: 8px;")
@@ -170,7 +191,7 @@ class MainWindow(QMainWindow):
 
     def _update_user_label(self):
         name = self._username or DEFAULT_USER
-        self._user_label.setText(f"👤 {name}")
+        self._user_label.setText(f" {name}")
 
     # ────────────────── 操作 ──────────────────
 

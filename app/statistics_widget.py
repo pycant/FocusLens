@@ -1,8 +1,9 @@
 """分心统计面板 — 显示当前会话的专注统计"""
+import os
 import time
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QPixmap, QIcon
 
 
 class StatisticsWidget(QWidget):
@@ -35,9 +36,20 @@ class StatisticsWidget(QWidget):
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(4)
 
+        title_row = QHBoxLayout()
+        icon_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "resources", "icons", "chart.svg",
+        )
+        title_icon = QLabel()
+        title_icon.setPixmap(QIcon(icon_path).pixmap(18, 18))
+        title_icon.setStyleSheet("background: transparent;")
+        title_row.addWidget(title_icon)
         title = QLabel("Focus Statistics")
         title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        layout.addWidget(title)
+        title_row.addWidget(title)
+        title_row.addStretch()
+        layout.addLayout(title_row)
 
         # 分心程度进度条
         degree_layout = QVBoxLayout()
