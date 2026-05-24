@@ -171,19 +171,8 @@ def _qss(is_dark: bool) -> str:
             border-radius: 4px;
             padding: 3px;
         }
-        QCheckBox {
-            color: #dcdcdc;
-        }
-        QCheckBox::indicator:unchecked {
-            border: 1px solid #5a5f65;
-            background: #34383d;
-            border-radius: 3px;
-        }
-        QCheckBox::indicator:checked {
-            border: 1px solid #3c78d8;
-            background: #3c78d8;
-            border-radius: 3px;
-        }
+        /* 复选框使用原生样式（保持 ✓ 可见） */
+        QCheckBox { color: #dcdcdc; }
         QSlider::groove:horizontal {
             background: #34383d;
             height: 6px;
