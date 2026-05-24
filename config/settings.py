@@ -55,7 +55,7 @@ class FocusCamSettings:
     log_to_db: bool = False
 
     # --- 显示设置 ---
-    dark_mode: bool = False
+    theme_name: str = "classic_light"
 
     @classmethod
     def load(cls) -> "FocusCamSettings":

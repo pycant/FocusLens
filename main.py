@@ -34,7 +34,7 @@ def main():
 
     # 加载已保存的主题设置
     settings = FocusCamSettings.load()
-    apply_theme(app, settings.dark_mode)
+    apply_theme(app, settings.theme_name)
 
     window = MainWindow()
     window.show()

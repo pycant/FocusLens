@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from config.settings import FocusCamSettings, ALERT_METHODS, FEEDBACK_ACTIONS
+from app.theme import THEMES
 
 
 class SettingsDialog(QDialog):
@@ -147,10 +148,14 @@ class SettingsDialog(QDialog):
         # 分隔线
         misc_layout.addRow(QLabel(""))
 
-        # 暗色主题
-        self._dark_mode_cb = QCheckBox("Enable dark mode")
-        self._dark_mode_cb.setChecked(self._settings.dark_mode)
-        misc_layout.addRow("Theme:", self._dark_mode_cb)
+        # 主题选择
+        self._theme_combo = QComboBox()
+        for key, meta in THEMES.items():
+            self._theme_combo.addItem(meta["label"], key)
+        idx = self._theme_combo.findData(self._settings.theme_name)
+        if idx >= 0:
+            self._theme_combo.setCurrentIndex(idx)
+        misc_layout.addRow("Theme:", self._theme_combo)
 
         tabs.addTab(misc_tab, "General")
 
@@ -187,7 +192,7 @@ class SettingsDialog(QDialog):
         self._settings.mirror_display = self._mirror_cb.isChecked()
         self._settings.log_to_csv = self._log_csv_cb.isChecked()
         self._settings.log_to_db = self._log_db_cb.isChecked()
-        self._settings.dark_mode = self._dark_mode_cb.isChecked()
+        self._settings.theme_name = self._theme_combo.currentData()
         self._settings.save()
         self.accept()
 
@@ -207,7 +212,9 @@ class SettingsDialog(QDialog):
         self._mirror_cb.setChecked(default.mirror_display)
         self._log_csv_cb.setChecked(default.log_to_csv)
         self._log_db_cb.setChecked(default.log_to_db)
-        self._dark_mode_cb.setChecked(default.dark_mode)
+        idx = self._theme_combo.findData(default.theme_name)
+        if idx >= 0:
+            self._theme_combo.setCurrentIndex(idx)
 
     def get_settings(self) -> FocusCamSettings:
         return self._settings

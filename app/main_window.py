@@ -16,7 +16,7 @@ from app.settings_dialog import SettingsDialog
 from app.login_dialog import LoginDialog
 from app.distraction_overlay import DistractionOverlay
 from app.statistics_widget import StatisticsWidget
-from app.theme import apply_theme
+from app.theme import apply_theme, THEMES, get_theme_label
 from utils.logger import DistractionLogger
 
 DEFAULT_USER = "Default User"
@@ -72,11 +72,14 @@ class MainWindow(QMainWindow):
         user_menu.addAction(exit_action)
 
         view_menu = menubar.addMenu("View")
-        self._dark_mode_action = QAction("Toggle Dark Mode", self)
-        self._dark_mode_action.setCheckable(True)
-        self._dark_mode_action.setChecked(self._settings.dark_mode)
-        self._dark_mode_action.triggered.connect(self._toggle_theme)
-        view_menu.addAction(self._dark_mode_action)
+        self._theme_actions = {}
+        for key, meta in THEMES.items():
+            a = QAction(meta["label"], self)
+            a.setCheckable(True)
+            a.setChecked(key == self._settings.theme_name)
+            a.triggered.connect(lambda checked, k=key: self._switch_theme(k))
+            view_menu.addAction(a)
+            self._theme_actions[key] = a
 
         help_menu = menubar.addMenu("Help")
         about_action = QAction("About", self)
@@ -253,14 +256,17 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self._settings, self)
         if dialog.exec() == SettingsDialog.DialogCode.Accepted:
             self._settings = dialog.get_settings()
-            self._dark_mode_action.setChecked(self._settings.dark_mode)
-            apply_theme(QApplication.instance(), self._settings.dark_mode)
+            for key, a in self._theme_actions.items():
+                a.setChecked(key == self._settings.theme_name)
+            apply_theme(QApplication.instance(), self._settings.theme_name)
             if self._camera_widget and self._camera_widget.worker:
                 self._camera_widget.worker.update_settings(self._settings)
 
-    def _toggle_theme(self):
-        self._settings.dark_mode = self._dark_mode_action.isChecked()
-        apply_theme(QApplication.instance(), self._settings.dark_mode)
+    def _switch_theme(self, theme_name: str):
+        self._settings.theme_name = theme_name
+        for key, a in self._theme_actions.items():
+            a.setChecked(key == theme_name)
+        apply_theme(QApplication.instance(), theme_name)
         self._settings.save()
 
     def _show_about(self):

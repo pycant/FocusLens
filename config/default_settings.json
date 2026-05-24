@@ -14,5 +14,5 @@
   "mirror_display": true,
   "log_to_csv": true,
   "log_to_db": false,
-  "dark_mode": false
+  "theme_name": "classic_light"
 }
