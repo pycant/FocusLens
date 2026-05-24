@@ -9,6 +9,13 @@ sys.setrecursionlimit(5000)
 # SPECPATH is the directory containing this spec file (build/)
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 
+# Ensure PyQt6 Qt6 bin directory is in PATH to avoid DLL conflicts
+_qt_bin = os.path.join(
+    os.path.dirname(os.__file__), "site-packages", "PyQt6", "Qt6", "bin"
+)
+if os.path.isdir(_qt_bin):
+    os.environ["PATH"] = _qt_bin + os.pathsep + os.environ.get("PATH", "")
+
 a = Analysis(
     [os.path.join(ROOT, "main.py")],
     pathex=[ROOT],
