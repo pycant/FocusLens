@@ -191,6 +191,7 @@ class MainWindow(QMainWindow):
         self._stats_widget = StatisticsWidget()
         self._stats_widget.setMinimumWidth(0)
         self._stats_widget.setMaximumWidth(400)
+        self._stats_widget.set_username(self._username)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.addWidget(left_panel)
@@ -309,6 +310,7 @@ class MainWindow(QMainWindow):
         self._settings.last_username = name
         self._settings.save()
         self._update_user_label()
+        self._stats_widget.set_username(name)
 
     # ── 设置与主题 ──
 

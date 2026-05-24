@@ -1,12 +1,15 @@
-"""统计面板 — 进度条 + 胶囊信息 + 时序图 + 分心记录表"""
+"""统计面板 — 进度条 + 胶囊信息 + 时序图 + 贡献网格 + 分心记录"""
 import time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QProgressBar, QFrame, QTableWidget, QHeaderView,
-    QTableWidgetItem, QSizePolicy,
+    QTableWidgetItem,
 )
-from PyQt6.QtCore import Qt, QTimer, QPointF
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QBrush, QPolygonF
+from PyQt6.QtCore import QPointF
+
+from app.contribution_grid import ContributionGrid
 
 
 class CapsuleLabel(QLabel):
@@ -14,14 +17,13 @@ class CapsuleLabel(QLabel):
     def __init__(self, text="", color="#3b82f6", parent=None):
         super().__init__(text, parent)
         self._color = color
-        self._apply_style(color)
-        self.setWordWrap(True)
+        self._apply(color)
 
     def set_color(self, color: str):
         self._color = color
-        self._apply_style(color)
+        self._apply(color)
 
-    def _apply_style(self, color: str):
+    def _apply(self, color: str):
         self.setStyleSheet(f"""
             background-color: {color}18;
             border: 1px solid {color}40;
@@ -32,13 +34,13 @@ class CapsuleLabel(QLabel):
 
 
 class FocusTimeline(QWidget):
-    """专注度时序迷你图 — 显示最近 60 秒的专注变化"""
+    """专注度时序迷你山形图"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumHeight(64)
-        self.setMaximumHeight(90)
-        self._data: list[float] = []  # 0-100 distraction degree
+        self.setMinimumHeight(60)
+        self.setMaximumHeight(80)
+        self._data: list[float] = []
 
     def add_point(self, val: float):
         self._data.append(val)
@@ -52,26 +54,19 @@ class FocusTimeline(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        w, h = self.width(), self.height()
-        pad = 4
-        plot_w = w - pad * 2
-        plot_h = h - pad * 2
-
-        # 背景
-        painter.fillRect(0, 0, w, h, Qt.GlobalColor.transparent)
-
-        # 填充区域 (mountain chart)
+        w, h, pad = self.width(), self.height(), 4
+        pw, ph = w - pad * 2, h - pad * 2
         n = len(self._data)
         if n < 2:
             return
 
         path = []
         for i, val in enumerate(self._data):
-            x = pad + (i / (n - 1)) * plot_w
-            y = pad + (1 - val / 100.0) * plot_h
+            x = pad + (i / (n - 1)) * pw
+            y = pad + (1 - val / 100.0) * ph
             path.append((x, y))
 
-        # 画线 + 填充
+        # 线条
         for i in range(len(path) - 1):
             x1, y1 = path[i]
             x2, y2 = path[i + 1]
@@ -82,11 +77,11 @@ class FocusTimeline(QWidget):
             painter.setPen(QPen(QColor(r, g, b, 200), 2))
             painter.drawLine(int(x1), int(y1), int(x2), int(y2))
 
-        # 填充底部区域（山形图）
+        # 填充
         if len(path) >= 2:
-            pts = [QPointF(path[0][0], pad + plot_h)]
+            pts = [QPointF(path[0][0], pad + ph)]
             pts += [QPointF(x, y) for x, y in path]
-            pts.append(QPointF(path[-1][0], pad + plot_h))
+            pts.append(QPointF(path[-1][0], pad + ph))
             painter.setBrush(QBrush(QColor(59, 130, 246, 30)))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawPolygon(QPolygonF(pts))
@@ -95,7 +90,7 @@ class FocusTimeline(QWidget):
 
 
 class DistractionTable(QWidget):
-    """分心事件记录表"""
+    """分心记录表"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -108,7 +103,7 @@ class DistractionTable(QWidget):
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self._table.verticalHeader().hide()
-        self._table.setMaximumHeight(160)
+        self._table.setMaximumHeight(140)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: transparent; border: none;
@@ -116,8 +111,7 @@ class DistractionTable(QWidget):
             }
             QHeaderView::section {
                 background: transparent; border: none;
-                font-weight: bold; font-size: 8pt;
-                padding: 2px 4px;
+                font-weight: bold; font-size: 7pt; padding: 2px;
             }
         """)
         layout.addWidget(self._table)
@@ -129,7 +123,7 @@ class DistractionTable(QWidget):
         self._table.insertRow(0)
         self._table.setItem(0, 0, self._make_item(ts))
         self._table.setItem(0, 1, self._make_item(f"{duration:.1f}s"))
-        if self._table.rowCount() > 20:
+        if self._table.rowCount() > 15:
             self._table.removeRow(self._table.rowCount() - 1)
 
     def _make_item(self, text: str):
@@ -141,6 +135,24 @@ class DistractionTable(QWidget):
         self._table.setRowCount(0)
 
 
+def _section(title: str) -> QFrame:
+    """创建带标题边框的区块"""
+    f = QFrame()
+    f.setStyleSheet("""
+        QFrame {
+            border: 1px solid rgba(128,128,128,0.2);
+            border-radius: 8px; padding: 4px;
+        }
+    """)
+    layout = QVBoxLayout(f)
+    layout.setContentsMargins(8, 4, 8, 6)
+    layout.setSpacing(4)
+    lbl = QLabel(title)
+    lbl.setStyleSheet("font-size: 7pt; font-weight: bold; color: rgba(128,128,128,0.6); letter-spacing: 1px; border: none;")
+    layout.addWidget(lbl)
+    return f
+
+
 class StatisticsWidget(QWidget):
     """专注度统计面板"""
 
@@ -149,6 +161,8 @@ class StatisticsWidget(QWidget):
         self._distraction_count = 0
         self._session_started = False
         self._session_start_time = 0.0
+        self._focused_seconds = 0
+        self._last_tick_focused = False
         self._degree = 0.0
 
         self.setMinimumWidth(200)
@@ -158,10 +172,8 @@ class StatisticsWidget(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
-        # ── 区块 1: 分心程度进度条 ──
-        sec1 = self._make_section("FOCUS LEVEL")
-        sec1_layout = sec1.layout()
-
+        # ── 1. 专注程度进度条 ──
+        s1 = _section("FOCUS LEVEL")
         self._degree_bar = QProgressBar()
         self._degree_bar.setRange(0, 100)
         self._degree_bar.setValue(0)
@@ -178,74 +190,80 @@ class StatisticsWidget(QWidget):
                 border-radius: 7px;
             }
         """)
-        sec1_layout.addWidget(self._degree_bar)
+        s1.layout().addWidget(self._degree_bar)
 
         self._degree_label = QLabel("Distraction: 0%")
-        self._degree_label.setStyleSheet("font-size: 8pt; color: #6b7280;")
-        sec1_layout.addWidget(self._degree_label)
+        self._degree_label.setStyleSheet("font-size: 8pt; color: rgba(128,128,128,0.7);")
+        s1.layout().addWidget(self._degree_label)
+        layout.addWidget(s1)
 
-        layout.addWidget(sec1)
+        # ── 2. 胶囊信息行 ──
+        cap_row = QHBoxLayout()
+        cap_row.setSpacing(4)
 
-        # ── 区块 2: 胶囊信息行 ──
-        info_row = QHBoxLayout()
-        info_row.setSpacing(4)
         self._distraction_cap = CapsuleLabel("0 distractions", "#f59e0b")
-        info_row.addWidget(self._distraction_cap)
+        cap_row.addWidget(self._distraction_cap)
+
         self._state_cap = CapsuleLabel("Idle", "#6b7280")
-        info_row.addWidget(self._state_cap)
-        self._time_cap = CapsuleLabel("0s", "#3b82f6")
-        info_row.addWidget(self._time_cap)
-        info_row.addStretch()
-        layout.addLayout(info_row)
+        cap_row.addWidget(self._state_cap)
 
-        # ── 区块 3: 专注度时序图 ──
-        sec3 = self._make_section("FOCUS TIMELINE")
+        cap_row.addStretch()
+        layout.addLayout(cap_row)
+
+        # ── 专注时间（单独一行，胶囊下方） ──
+        self._focus_time_cap = CapsuleLabel("Focus Time: 0s", "#22c55e")
+        layout.addWidget(self._focus_time_cap)
+
+        # ── 3. 时序图 ──
+        s3 = _section("FOCUS TIMELINE (60s)")
         self._timeline = FocusTimeline()
-        sec3.layout().addWidget(self._timeline)
-        layout.addWidget(sec3)
+        s3.layout().addWidget(self._timeline)
+        layout.addWidget(s3)
 
-        # ── 区块 4: 分心记录表 ──
-        sec4 = self._make_section("DISTRACTION RECORDS")
+        # ── 4. 贡献网格 ──
+        s4 = _section("FOCUS HISTORY")
+        self._grid = ContributionGrid()
+        s4.layout().addWidget(self._grid)
+        layout.addWidget(s4)
+
+        # ── 5. 分心记录 ──
+        s5 = _section("DISTRACTION RECORDS")
         self._dist_table = DistractionTable()
-        sec4.layout().addWidget(self._dist_table)
-        layout.addWidget(sec4)
+        s5.layout().addWidget(self._dist_table)
+        layout.addWidget(s5)
 
         layout.addStretch()
 
-        # 计时器
         self._timer = QTimer(self)
-        self._timer.timeout.connect(self._update_time)
+        self._timer.timeout.connect(self._tick)
         self._timer.start(1000)
 
-    def _make_section(self, title: str) -> QFrame:
-        """创建带标题边框的区块"""
-        frame = QFrame()
-        frame.setStyleSheet("""
-            QFrame {
-                border: 1px solid rgba(128,128,128,0.2);
-                border-radius: 8px;
-                padding: 4px;
-            }
-        """)
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(8, 4, 8, 6)
-        layout.setSpacing(4)
+    def _tick(self):
+        if not self._session_started:
+            return
+        now = int(time.time())
+        elapsed = now - int(self._session_start_time)
+        # 专注时间：只在 focused 状态增加
+        if self._last_tick_focused:
+            self._focused_seconds += 1
+            self._grid.log_today(1 / 60.0)  # 每秒记录 1/60 分钟
 
-        title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("""
-            font-size: 7pt; font-weight: bold;
-            color: rgba(128,128,128,0.6);
-            letter-spacing: 1px; border: none;
-        """)
-        layout.addWidget(title_lbl)
-        return frame
+        total_str = str(elapsed)
+        focus_str = str(self._focused_seconds)
+        self._focus_time_cap.setText(f"Focus Time: {focus_str}s / {total_str}s")
+        self._focus_time_cap._apply("#22c55e" if self._last_tick_focused else "#6b7280")
 
     # ── 公开 API ──
+
+    def set_grid_username(self, name: str):
+        self._grid.set_username(name)
 
     def reset_session(self):
         self._distraction_count = 0
         self._session_started = True
         self._session_start_time = time.time()
+        self._focused_seconds = 0
+        self._last_tick_focused = False
         self._degree = 0.0
         self._degree_bar.setValue(0)
         self._timeline.add_point(0)
@@ -264,18 +282,18 @@ class StatisticsWidget(QWidget):
     def update_state(self, state_text: str):
         raw = state_text.replace("Status: ", "")
         if "Focused" in raw:
-            color = "#22c55e"
+            self._last_tick_focused = True
+            self._state_cap.set_color("#22c55e")
         elif "Eyes Closed" in raw or "No Face" in raw:
-            color = "#ef4444"
+            self._last_tick_focused = False
+            self._state_cap.set_color("#ef4444")
         else:
-            color = "#6b7280"
-        self._state_cap.set_color(color)
+            self._last_tick_focused = False
+            self._state_cap.set_color("#6b7280")
         self._state_cap.setText(raw)
 
     def add_distraction_entry(self, duration: float):
         self._dist_table.add_entry(duration)
 
-    def _update_time(self):
-        if self._session_started and self._session_start_time > 0:
-            elapsed = int(time.time() - self._session_start_time)
-            self._time_cap.setText(f"{elapsed}s")
+    def set_username(self, name: str):
+        self._grid.set_username(name)
