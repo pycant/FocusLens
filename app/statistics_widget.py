@@ -188,6 +188,7 @@ class StatisticsWidget(QWidget):
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #22c55e, stop:0.5 #eab308, stop:1 #ef4444);
                 border-radius: 7px;
+                min-width: 14px;
             }
         """)
         s1.layout().addWidget(self._degree_bar)
@@ -277,9 +278,12 @@ class StatisticsWidget(QWidget):
         if "Focused" in raw:
             self._last_tick_focused = True
             self._state_cap.set_color("#22c55e")
-        elif "Eyes Closed" in raw or "No Face" in raw:
+        elif "Eyes Closed" in raw:
             self._last_tick_focused = False
-            self._state_cap.set_color("#ef4444")
+            self._state_cap.set_color("#f59e0b")  # 琥珀色 = 暂时分心
+        elif "No Face" in raw:
+            self._last_tick_focused = False
+            self._state_cap.set_color("#ef4444")  # 红色 = 离席
         else:
             self._last_tick_focused = False
             self._state_cap.set_color("#6b7280")

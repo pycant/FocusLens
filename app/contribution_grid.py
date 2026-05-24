@@ -87,27 +87,29 @@ class ContributionGrid(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        c, g, p, = self._cell_size()
+        c, _ = self._cell_size()
+        g, p = self.GAP, self.PAD
         step = c + g
         today = datetime.date.today()
         total_days = 84
         start = today - datetime.timedelta(days=total_days - 1)
 
-        # 月份标签（上移避免与格子重叠）
+        # 月份标签（顶部，增加左边距避免裁剪）
+        label_pad = p + 6
         painter.setPen(QPen(QColor(128, 128, 128, 140), 0))
         font = QFont("Arial", max(5, c // 2), QFont.Weight.Light)
         painter.setFont(font)
         for w in range(12):
             month = (start + datetime.timedelta(weeks=w)).strftime("%b")
-            painter.drawText(p + w * step, 0, step, p - 1,
-                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom, month)
+            rect = (label_pad + w * step, 2, step, p - 4)
+            painter.drawText(*rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom, month)
 
-        # 星期标签（左侧）
+        # 星期标签（左侧，增加上边距避免裁剪）
         painter.setPen(QPen(QColor(128, 128, 128, 120), 0))
         for row_idx, label in enumerate(["Mon", "", "Wed", "", "Fri", "", "Sun"]):
             if label:
-                painter.drawText(0, p + row_idx * step, p - 2, c,
-                                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, label)
+                rect2 = (2, p + row_idx * step, label_pad - 4, c)
+                painter.drawText(*rect2, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, label)
 
         for i in range(total_days):
             d = start + datetime.timedelta(days=i)
@@ -120,9 +122,9 @@ class ContributionGrid(QWidget):
             mins = self._data.get(date_str, 0.0)
 
             if mins <= 0:
-                painter.fillRect(x, y, c, c, QColor(60, 60, 60, 25))
-                painter.setPen(QPen(QColor(128, 128, 128, 12), 0.5))
-                painter.drawRect(x, y, c, c)
+                painter.fillRect(int(x), int(y), c, c, QColor(60, 60, 60, 25))
+                painter.setPen(QPen(QColor(128, 128, 128, 12), 1))
+                painter.drawRect(int(x), int(y), c, c)
             else:
                 intensity = min(mins / max(self._max_minutes, 1), 1.0)
                 gv = int(180 - (1.0 - intensity) * 100)
@@ -132,18 +134,19 @@ class ContributionGrid(QWidget):
                 grad = QLinearGradient(x, y, x + c, y + c)
                 grad.setColorAt(0.0, light)
                 grad.setColorAt(1.0, base)
-                painter.fillRect(x + 0.5, y + 0.5, c - 1, c - 1, grad)
-                painter.setPen(QPen(base.lighter(130), 0.5))
-                painter.drawRect(x, y, c, c)
+                painter.fillRect(int(x) + 1, int(y) + 1, c - 2, c - 2, grad)
+                painter.setPen(QPen(base.lighter(130), 1))
+                painter.drawRect(int(x), int(y), c, c)
 
             if d == today:
-                painter.setPen(QPen(QColor(59, 130, 246, 150), 1.5))
-                painter.drawRect(x - 1, y - 1, c + 2, c + 2)
+                painter.setPen(QPen(QColor(59, 130, 246, 150), 2))
+                painter.drawRect(int(x) - 1, int(y) - 1, c + 2, c + 2)
 
         painter.end()
 
     def mouseMoveEvent(self, event):
-        c, g, p = self._cell_size()
+        c, _ = self._cell_size()
+        g, p = self.GAP, self.PAD
         step = c + g
         mx, my = event.position().x(), event.position().y()
         col = int((mx - p) // step)
