@@ -2,7 +2,6 @@
 import os
 import cv2 as cv
 import mysql.connector
-from mysql.connector.connector import MySQLConnection
 from typing import Optional, Tuple
 
 DB_CONFIG = {
@@ -14,7 +13,7 @@ DB_CONFIG = {
 }
 
 
-def get_db_connection() -> MySQLConnection:
+def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
 

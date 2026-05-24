@@ -8,6 +8,7 @@
   "alert_method": "toast_and_sound",
   "alert_cooldown": 10.0,
   "feedback_action": "continue",
+  "last_username": "",
   "camera_id": 0,
   "mirror_display": true,
   "log_to_csv": true,

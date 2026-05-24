@@ -1,16 +1,13 @@
-"""FocusCam 主窗口 — PyQt6 桌面应用
-
-整合摄像头画面、检测逻辑、设置面板、分心提醒、统计面板。
-替代原项目 focuscam.py 的全部 tkinter UI。
-"""
+"""FocusCam 主窗口 — PyQt6 桌面应用"""
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QMessageBox,
-    QStatusBar, QApplication, QSplitter,
+    QStatusBar, QApplication, QSplitter, QInputDialog,
+    QLineEdit,
 )
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QAction, QIcon, QFont
+from PyQt6.QtGui import QAction, QFont
 
 from config.settings import FocusCamSettings
 from core.camera_manager import get_available_cameras
@@ -21,6 +18,8 @@ from app.distraction_overlay import DistractionOverlay
 from app.statistics_widget import StatisticsWidget
 from app.theme import apply_theme
 from utils.logger import DistractionLogger
+
+DEFAULT_USER = "Default User"
 
 
 class MainWindow(QMainWindow):
@@ -34,14 +33,15 @@ class MainWindow(QMainWindow):
         # 配置和日志
         self._settings = FocusCamSettings.load()
         self._logger = DistractionLogger()
-        self._username: str | None = None
         self._distraction_overlay: DistractionOverlay | None = None
+
+        # 自动使用上次登录用户（无需弹登录框）
+        self._username = self._settings.last_username or DEFAULT_USER
 
         # 构建 UI
         self._build_menu_bar()
         self._build_central()
         self._build_status_bar()
-        self._connect_signals()
 
         # 定时器：同步统计信息
         self._stats_timer = QTimer(self)
@@ -53,19 +53,24 @@ class MainWindow(QMainWindow):
     def _build_menu_bar(self):
         menubar = self.menuBar()
 
-        file_menu = menubar.addMenu("File")
-        login_action = QAction("Login...", self)
-        login_action.triggered.connect(self._show_login)
-        file_menu.addAction(login_action)
+        user_menu = menubar.addMenu("User")
+        switch_action = QAction("Switch User...", self)
+        switch_action.triggered.connect(self._switch_user)
+        user_menu.addAction(switch_action)
+
+        register_action = QAction("Register New User (Face Capture)...", self)
+        register_action.triggered.connect(self._register_user)
+        user_menu.addAction(register_action)
+        user_menu.addSeparator()
 
         settings_action = QAction("Settings...", self)
         settings_action.triggered.connect(self._show_settings)
-        file_menu.addAction(settings_action)
-        file_menu.addSeparator()
+        user_menu.addAction(settings_action)
+        user_menu.addSeparator()
 
         exit_action = QAction("Exit", self)
         exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
+        user_menu.addAction(exit_action)
 
         view_menu = menubar.addMenu("View")
         self._dark_mode_action = QAction("Toggle Dark Mode", self)
@@ -85,19 +90,17 @@ class MainWindow(QMainWindow):
         main_layout = QHBoxLayout(central)
         main_layout.setContentsMargins(8, 8, 8, 8)
 
-        # 左侧：视频 + 控制
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 4, 0)
 
-        # 摄像头选择行
+        # 顶部控制栏
         cam_row = QHBoxLayout()
         cam_row.addWidget(QLabel("Camera:"))
         self._cam_combo = QComboBox()
         self._available_cameras = get_available_cameras()
         for c in self._available_cameras:
             self._cam_combo.addItem(f"Camera {c}", c)
-        # 选中已保存的 camera_id
         saved_idx = self._cam_combo.findData(self._settings.camera_id)
         if saved_idx >= 0:
             self._cam_combo.setCurrentIndex(saved_idx)
@@ -105,7 +108,6 @@ class MainWindow(QMainWindow):
         cam_row.addWidget(self._cam_combo)
         cam_row.addStretch()
 
-        # 控制按钮
         self._start_btn = QPushButton("▶ Start Detection")
         self._start_btn.setStyleSheet("""
             QPushButton {
@@ -150,11 +152,10 @@ class MainWindow(QMainWindow):
         self._camera_widget = CameraWidget()
         left_layout.addWidget(self._camera_widget, stretch=1)
 
-        # 右侧：统计面板
+        # 右侧统计面板
         self._stats_widget = StatisticsWidget()
         self._stats_widget.setFixedWidth(220)
 
-        # 左右分割
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(left_panel)
         splitter.addWidget(self._stats_widget)
@@ -167,35 +168,26 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage("Ready — click Start Detection to begin")
         self.setStatusBar(self._status_bar)
 
-        self._user_label = QLabel("Not logged in")
-        self._user_label.setStyleSheet("color: #868e96; padding-right: 8px;")
+        self._user_label = QLabel()
+        self._update_user_label()
+        self._user_label.setStyleSheet("padding-right: 8px;")
         self._status_bar.addPermanentWidget(self._user_label)
 
-    def _connect_signals(self):
-        """连接检测线程的信号到 UI 处理"""
-        pass  # 在 start_detection 时动态连接
+    def _update_user_label(self):
+        name = self._username or DEFAULT_USER
+        self._user_label.setText(f"👤 {name}")
 
     # ────────────────── 操作 ──────────────────
 
     def _start_detection(self):
-        # 检查摄像头
         if not self._available_cameras:
             QMessageBox.critical(self, "Error", "No camera found.")
             return
 
-        # 登录（如果还未登录）
-        if not self._username:
-            self._show_login()
-            if not self._username:
-                return
-
-        # 更新 camera_id
         self._settings.camera_id = self._cam_combo.currentData()
 
-        # 初始化分心提醒覆盖层
         self._distraction_overlay = DistractionOverlay(self)
 
-        # 启动摄像头检测
         self._camera_widget.start_detection(self._settings)
         worker = self._camera_widget.worker
         if worker:
@@ -220,16 +212,37 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage("Detection stopped")
 
     def _switch_camera(self):
-        if hasattr(self, "_camera_widget") and self._camera_widget.worker:
+        if self._camera_widget and self._camera_widget.worker:
             self._settings.camera_id = self._cam_combo.currentData()
             self._camera_widget.worker.update_settings(self._settings)
 
-    def _show_login(self):
+    # ──────────── 用户管理 ────────────
+
+    def _switch_user(self):
+        """简易切换用户：只输用户名，不弹摄像头"""
+        name, ok = QInputDialog.getText(
+            self, "Switch User", "Enter username:",
+            QLineEdit.EchoMode.Normal, self._username,
+        )
+        if ok and name and name.strip():
+            self._set_username(name.strip())
+
+    def _register_user(self):
+        """注册新用户：带摄像头人脸拍照"""
         login = LoginDialog(self, self._cam_combo.currentData())
         if login.exec() == LoginDialog.DialogCode.Accepted:
-            self._username = login.get_username()
-            self._user_label.setText(f"👤 {self._username}")
-            self._user_label.setStyleSheet("color: #2b8a3e; padding-right: 8px;")
+            name = login.get_username()
+            if name:
+                self._set_username(name)
+
+    def _set_username(self, name: str):
+        self._username = name
+        self._settings.last_username = name
+        self._settings.save()
+        self._update_user_label()
+        self._status_bar.showMessage(f"User: {self._username}")
+
+    # ──────────── 设置与主题 ────────────
 
     def _show_settings(self):
         dialog = SettingsDialog(self._settings, self)
@@ -257,33 +270,22 @@ class MainWindow(QMainWindow):
     # ────────────────── 信号处理 ──────────────────
 
     def _on_status_update(self, text: str, color: str):
-        color_map = {
-            "green": "#2b8a3e",
-            "orange": "#e8590c",
-            "red": "#c92a2a",
-            "blue": "#1971c2",
-        }
-        html_color = color_map.get(color, "#333")
         self._stats_widget.update_state(text)
 
     def _on_distraction_alert(self, degree: float, duration: float):
-        """分心提醒 — 非模态"""
         if self._distraction_overlay:
             self._distraction_overlay.show_alert(degree, duration)
 
-        # 播放提示音
         method = self._settings.alert_method
         if method in ("sound", "toast_and_sound"):
             self._play_alert_sound()
 
-        # 日志
         if self._settings.log_to_csv:
-            state = "eyes_closed" if "Eyes" in self._stats_widget._state_label.text() else "no_face"
+            state = "eyes_closed" if self._stats_widget.is_eyes_closed_state() else "no_face"
             self._logger.log(f"Distraction: {state}", degree, duration)
 
     def _on_distraction_start(self, degree: float, duration: float):
         self._stats_widget.increment_distraction()
-        # 首次分心也记录日志
         if self._settings.log_to_csv:
             self._logger.log("Distraction started", degree, duration)
 
@@ -291,7 +293,6 @@ class MainWindow(QMainWindow):
         pass
 
     def _play_alert_sound(self):
-        """播放提示音（使用系统 bell 或 wav 文件）"""
         try:
             sound_path = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -301,17 +302,17 @@ class MainWindow(QMainWindow):
                 import winsound
                 winsound.PlaySound(sound_path, winsound.SND_ASYNC)
             else:
-                # 系统提示音
                 QApplication.beep()
         except Exception:
             QApplication.beep()
 
     def _sync_stats(self):
-        """定期同步统计信息"""
         if self._camera_widget and self._camera_widget.worker:
             self._stats_widget.update_degree(self._camera_widget.worker.distraction_degree)
 
     def closeEvent(self, event):
+        # 保存最后使用的用户名
+        self._settings.last_username = self._username or ""
         self._camera_widget.stop_detection()
         self._settings.save()
         event.accept()

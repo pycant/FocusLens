@@ -108,6 +108,10 @@ class StatisticsWidget(QWidget):
     def update_state(self, state_text: str):
         self._state_label.setText(state_text)
 
+    def is_eyes_closed_state(self) -> bool:
+        """当前状态是否为闭眼"""
+        return "Eyes" in self._state_label.text()
+
     def _update_focus_time(self):
         if self._session_started and self._session_start_time > 0:
             elapsed = int(time.time() - self._session_start_time)

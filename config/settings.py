@@ -42,6 +42,9 @@ class FocusCamSettings:
     alert_cooldown: float = 10.0          # 两次提醒之间的最短间隔（秒）
     feedback_action: str = "continue"       # 分心后的反馈行为
 
+    # --- 用户设置 ---
+    last_username: str = ""
+
     # --- 摄像头设置 ---
     camera_id: int = 0
     mirror_display: bool = True
