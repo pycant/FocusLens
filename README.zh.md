@@ -1,5 +1,7 @@
 # FocusLens — AI 专注力追踪
 
+> [English](README.md) | [**中文版**](README.zh.md)
+
 基于摄像头的桌面应用，实时检测分心行为并追踪专注度。基于 **PyQt6**、**OpenCV** 和 **MediaPipe** 构建。
 
 ## 致谢
@@ -27,8 +29,8 @@
 | 图形界面 | PyQt6 |
 | 面部检测 | MediaPipe FaceMesh |
 | 计算机视觉 | OpenCV |
-| 数据库(本地) | SQLite |
-| 数据库(用户) | MySQL |
+| 数据库（专注日志） | SQLite |
+| 数据库（用户账户） | MySQL |
 | 音频 | QSound / winsound |
 | 打包 | PyInstaller |
 
@@ -69,6 +71,45 @@ python main.py
 | **视图 → 侧边面板** | 显示/隐藏统计面板 |
 | **折叠 ▲** | 点击区块标题隐藏内容 |
 
+## 数据库说明
+
+FocusLens 使用两套数据库系统分别存储不同类型的数据：
+
+### SQLite — 专注日志（本地自动存储）
+
+每日专注分钟数自动存储在 `focus_stats.db` 中。该数据库在应用启动时自动创建，无需手动配置。
+
+```
+focus_log 表结构：
+  username TEXT  — 用户名
+  date     TEXT  — 日期（YYYY-MM-DD 格式）
+  minutes  REAL  — 该日专注总分钟数
+```
+
+专注历史网格的数据即来源于此数据库，展示近 6 周的专注贡献图。
+
+### MySQL — 用户账户（可选）
+
+用户注册和登录功能需要 MySQL 服务器支持。数据库建表脚本位于 `resources/focuscam.sql`。
+
+```sql
+-- users 表（应用启动时自动创建）
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**配置步骤：**
+
+1. 安装 MySQL 服务器并创建数据库（例如 `focuscam_db`）
+2. 修改 `utils/database.py` 中的 MySQL 连接信息
+3. 启动应用——数据表会自动创建
+
+如果未配置 MySQL，应用仍可正常运行，但用户认证功能不可用。
+
 ## 项目结构
 
 ```
@@ -87,11 +128,14 @@ FocusLens/
 │   ├── distraction_engine.py # 分心状态机
 │   └── camera_manager.py   # 摄像头管理
 ├── config/                 # 配置文件
-├── utils/                  # 工具函数
-├── resources/              # 图标、音效、模型
-└── main.py                 # 入口文件
+├── utils/                  # 工具函数（数据库、日志）
+├── resources/              # 图标、音效、模型、SQL 建表脚本
+├── main.py                 # 入口文件
+├── README.md               # 英文文档
+├── README.zh.md            # 中文文档
+└── LICENSE                 # MIT 协议
 ```
 
 ## 开源协议
 
-本项目基于 MIT 协议开源。
+本项目基于 [MIT 协议](LICENSE) 开源。

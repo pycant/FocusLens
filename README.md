@@ -1,4 +1,6 @@
-# FocusCam — AI-Powered Focus Tracking
+# FocusLens — AI-Powered Focus Tracking
+
+> [**中文版**](README.zh.md) | [English](README.md)
 
 A desktop application that uses your webcam to detect distractions and track your focus in real time. Built with **PyQt6**, **OpenCV**, and **MediaPipe**.
 
@@ -27,8 +29,8 @@ Thank you to everyone who provided feedback and suggestions during development.
 | GUI Framework | PyQt6 |
 | Face Detection | MediaPipe FaceMesh |
 | Computer Vision | OpenCV |
-| Database (local) | SQLite |
-| Database (users) | MySQL |
+| Database (focus logs) | SQLite |
+| Database (user accounts) | MySQL |
 | Audio | QSound / winsound |
 | Packaging | PyInstaller |
 
@@ -36,8 +38,8 @@ Thank you to everyone who provided feedback and suggestions during development.
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/FocusCam.git
-cd FocusCam
+git clone https://github.com/pycant/FocusLens.git
+cd FocusLens
 
 # Install dependencies
 pip install -r requirements.txt
@@ -69,10 +71,49 @@ python main.py
 | **View → Side Panel** | Toggle statistics panel |
 | **Collapse ▲** | Click any section header to hide its content |
 
+## Database
+
+FocusLens uses two database systems for different purposes:
+
+### SQLite — Focus Logs (local, automatic)
+
+Your daily focus minutes are stored locally in `focus_stats.db`. This database is created automatically when you run the app — no setup required.
+
+```
+focus_log table:
+  username TEXT  — your login name
+  date     TEXT  — date in YYYY-MM-DD format
+  minutes  REAL  — total focused minutes for that day
+```
+
+The Focus History grid reads from this database to show your 6-week contribution chart.
+
+### MySQL — User Accounts (optional)
+
+User registration and login require a MySQL server. The schema is provided in `resources/focuscam.sql`.
+
+```sql
+-- users table (auto-created by the app if it doesn't exist)
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Setup steps:**
+
+1. Install MySQL server and create a database (e.g., `focuscam_db`)
+2. Update `utils/database.py` with your MySQL credentials
+3. Run the app — tables are created automatically
+
+If MySQL is not available, the app will still run but without user authentication.
+
 ## Project Structure
 
 ```
-my_FocusCam/
+FocusLens/
 ├── app/                    # GUI application modules
 │   ├── main_window.py      # Main window with camera view
 │   ├── camera_widget.py    # Camera feed + detection worker
@@ -87,11 +128,14 @@ my_FocusCam/
 │   ├── distraction_engine.py # Distraction state machine
 │   └── camera_manager.py   # Camera management
 ├── config/                 # Configuration
-├── utils/                  # Utilities
-├── resources/              # Icons, sounds, models
-└── main.py                 # Entry point
+├── utils/                  # Utilities (database, logging)
+├── resources/              # Icons, sounds, ML models, SQL schema
+├── main.py                 # Entry point
+├── README.md               # English documentation
+├── README.zh.md            # Chinese documentation
+└── LICENSE                 # MIT License
 ```
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
