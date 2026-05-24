@@ -127,3 +127,23 @@ coll = COLLECT(
     upx_exclude=[],
     name="FocusLens",
 )
+
+# ── Post-build: replace top-level VC runtime DLLs with Qt6's copies ──
+# The conda/Python VC runtime (14.44.-30328) conflicts with Qt6's own
+# (14.44.-30325) — replace so everything uses the same version.
+_rt_dlls = [
+    "MSVCP140.dll", "MSVCP140_2.dll",
+    "VCRUNTIME140.dll", "VCRUNTIME140_1.dll",
+]
+_coll_dir = os.path.join(SPECPATH, "..", "dist", "FocusLens", "_internal")
+_qt_bin_dir = os.path.join(_coll_dir, "PyQt6", "Qt6", "bin")
+for _dll in _rt_dlls:
+    _target = os.path.join(_coll_dir, _dll)
+    _src = os.path.join(_qt_bin_dir, _dll)
+    if os.path.isfile(_src):
+        # Remove conda's copy
+        if os.path.isfile(_target):
+            os.remove(_target)
+        # Copy Qt6's copy to top-level (so Python itself also finds the right version)
+        import shutil
+        shutil.copy2(_src, _target)
