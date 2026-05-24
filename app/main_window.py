@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         mb = self.menuBar()
 
         # User
-        user_menu = mb.addMenu("👤 User")
+        user_menu = mb.addMenu("User")
         sw = QAction("Switch User...", self)
         sw.setIcon(_icon("user"))
         sw.triggered.connect(self._switch_user)
@@ -106,7 +106,7 @@ class MainWindow(QMainWindow):
         user_menu.addAction(ex)
 
         # View
-        view_menu = mb.addMenu("👁 View")
+        view_menu = mb.addMenu("View")
         self._side_action = QAction("Side Panel", self)
         self._side_action.setCheckable(True)
         self._side_action.setChecked(self._side_visible)
@@ -124,7 +124,7 @@ class MainWindow(QMainWindow):
             self._theme_actions[key] = a
 
         # Help
-        help_menu = mb.addMenu("❓ Help")
+        help_menu = mb.addMenu("Help")
         ab = QAction("About FocusCam", self)
         ab.triggered.connect(self._show_about)
         help_menu.addAction(ab)
@@ -403,7 +403,7 @@ class MainWindow(QMainWindow):
 
     def _on_distraction_start(self, degree: float, duration: float):
         self._stats_widget.increment_distraction()
-        self._stats_widget.log_event(f"Distraction started ({degree:.0f}%)")
+        self._stats_widget.add_distraction_entry(duration)
         if self._settings.log_to_csv:
             self._logger.log("Distraction started", degree, duration)
 
