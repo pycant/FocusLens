@@ -110,6 +110,29 @@ CREATE TABLE users (
 
 如果未配置 MySQL，应用仍可正常运行，但用户认证功能不可用。
 
+## 从源码打包
+
+你可以将 FocusLens 打包为独立的 Windows 可执行文件：
+
+```bash
+# 需要 conda 环境包含所有依赖
+conda run -n yolo_env python scripts/build.py quick     # 仅打包 exe
+conda run -n yolo_env python scripts/build.py all        # 完整打包（exe + 更新程序）
+```
+
+| 脚本 | 用途 |
+|--------|---------|
+| `scripts/build.py` | 构建自动化（exe、更新程序、安装程序） |
+| `scripts/FocusLens.spec` | PyInstaller 配置文件 |
+| `scripts/updater.py` | 独立更新程序（检查 GitHub Releases） |
+| `scripts/installer/FocusLens.iss` | Inno Setup 安装程序脚本 |
+
+**输出：**
+- `dist/FocusLens/FocusLens.exe` — 打包应用（无需 Python 环境）
+- `dist/FocusLensUpdater.exe` — 独立更新程序（7.9 MB）
+
+> 打包后的应用约 140 MB（包含 MediaPipe 和 OpenCV 依赖）。如需制作安装程序，请安装 [Inno Setup 6](https://jrsoftware.org/isdl.php) 后运行 `python scripts/build.py installer`。
+
 ## 项目结构
 
 ```

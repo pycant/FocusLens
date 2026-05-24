@@ -110,6 +110,29 @@ CREATE TABLE users (
 
 If MySQL is not available, the app will still run but without user authentication.
 
+## Building from Source
+
+You can package FocusLens into a standalone Windows executable:
+
+```bash
+# Requires conda environment with all dependencies
+conda run -n yolo_env python scripts/build.py quick     # Build exe only
+conda run -n yolo_env python scripts/build.py all        # Full build (exe + updater)
+```
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/build.py` | Build automation (exe, updater, installer) |
+| `scripts/FocusLens.spec` | PyInstaller spec for the main app |
+| `scripts/updater.py` | Standalone updater (checks GitHub releases) |
+| `scripts/installer/FocusLens.iss` | Inno Setup installer script |
+
+**Output:**
+- `dist/FocusLens/FocusLens.exe` — bundled app (requires no Python installation)
+- `dist/FocusLensUpdater.exe` — standalone updater (7.9 MB)
+
+> The bundled app is ~140 MB due to MediaPipe and OpenCV dependencies. For the installer, install [Inno Setup 6](https://jrsoftware.org/isdl.php) and run `python scripts/build.py installer`.
+
 ## Project Structure
 
 ```
