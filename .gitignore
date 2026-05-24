@@ -15,6 +15,7 @@ venv/
 
 # User data
 distraction_log.csv
+focus_stats.db
 face_images/
 settings.json
 

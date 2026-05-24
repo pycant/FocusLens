@@ -3,7 +3,7 @@ import time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QProgressBar, QFrame, QTableWidget, QHeaderView,
-    QTableWidgetItem,
+    QTableWidgetItem, QScrollArea,
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QBrush, QPolygonF
@@ -135,22 +135,63 @@ class DistractionTable(QWidget):
         self._table.setRowCount(0)
 
 
-def _section(title: str) -> QFrame:
-    """创建带标题边框的区块"""
-    f = QFrame()
-    f.setStyleSheet("""
-        QFrame {
-            border: 1px solid rgba(128,128,128,0.2);
-            border-radius: 8px; padding: 4px;
-        }
-    """)
-    layout = QVBoxLayout(f)
-    layout.setContentsMargins(8, 4, 8, 6)
-    layout.setSpacing(4)
-    lbl = QLabel(title)
-    lbl.setStyleSheet("font-size: 7pt; font-weight: bold; color: rgba(128,128,128,0.6); letter-spacing: 1px; border: none;")
-    layout.addWidget(lbl)
-    return f
+class CollapsibleSection(QFrame):
+    """可折叠区块，点击标题展开/收起"""
+
+    def __init__(self, title: str, parent=None):
+        super().__init__(parent)
+        self._expanded = True
+
+        self.setStyleSheet("""
+            CollapsibleSection {
+                border: 1px solid rgba(128,128,128,0.2);
+                border-radius: 8px; padding: 4px;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 4, 8, 6)
+        layout.setSpacing(4)
+
+        # 可点击头部
+        hdr = QHBoxLayout()
+        hdr.setContentsMargins(0, 0, 0, 0)
+
+        self._arrow = QLabel("▼")
+        self._arrow.setStyleSheet(
+            "font-size: 7pt; color: rgba(128,128,128,0.5); border: none;"
+        )
+        self._title = QLabel(title)
+        self._title.setStyleSheet(
+            "font-size: 7pt; font-weight: bold;"
+            " color: rgba(128,128,128,0.6); letter-spacing: 1px; border: none;"
+        )
+
+        hdr.addWidget(self._title)
+        hdr.addStretch()
+        hdr.addWidget(self._arrow)
+
+        header = QWidget()
+        header.setLayout(hdr)
+        header.setCursor(Qt.CursorShape.PointingHandCursor)
+        header.mousePressEvent = lambda _: self._toggle()
+
+        # 内容容器
+        self._content = QWidget()
+        self._content_layout = QVBoxLayout(self._content)
+        self._content_layout.setContentsMargins(0, 0, 0, 0)
+        self._content_layout.setSpacing(4)
+
+        layout.addWidget(header)
+        layout.addWidget(self._content)
+
+    def content_layout(self):
+        return self._content_layout
+
+    def _toggle(self):
+        self._expanded = not self._expanded
+        self._content.setVisible(self._expanded)
+        self._arrow.setText("▼" if self._expanded else "▶")
 
 
 class StatisticsWidget(QWidget):
@@ -173,7 +214,7 @@ class StatisticsWidget(QWidget):
         layout.setSpacing(6)
 
         # ── 1. 专注程度进度条 ──
-        s1 = _section("FOCUS LEVEL")
+        s1 = CollapsibleSection("FOCUS LEVEL")
         self._degree_bar = QProgressBar()
         self._degree_bar.setRange(0, 100)
         self._degree_bar.setValue(0)
@@ -181,49 +222,56 @@ class StatisticsWidget(QWidget):
         self._degree_bar.setFixedHeight(14)
         self._degree_bar.setStyleSheet("""
             QProgressBar {
-                background: rgba(128,128,128,0.15);
-                border: none; border-radius: 7px;
+                background: rgba(128,128,128,0.12);
+                border: none;
+                border-radius: 7px;
             }
             QProgressBar::chunk {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #22c55e, stop:0.5 #eab308, stop:1 #ef4444);
+                    stop:0 #4ade80, stop:0.5 #fbbf24, stop:1 #f87171);
                 border-radius: 7px;
                 min-width: 14px;
             }
         """)
-        s1.layout().addWidget(self._degree_bar)
+        s1.content_layout().addWidget(self._degree_bar)
 
         self._degree_label = QLabel("Distraction: 0%")
         self._degree_label.setStyleSheet("font-size: 8pt; color: rgba(128,128,128,0.7);")
-        s1.layout().addWidget(self._degree_label)
+        s1.content_layout().addWidget(self._degree_label)
         layout.addWidget(s1)
 
-        # ── 2. 胶囊信息（每个占一整行，自适应宽度） ──
-        self._distraction_cap = CapsuleLabel("0 distractions", "#f59e0b")
-        layout.addWidget(self._distraction_cap)
-
-        self._state_cap = CapsuleLabel("Idle", "#6b7280")
-        layout.addWidget(self._state_cap)
-
-        self._focus_time_cap = CapsuleLabel("Focus Time: 0s", "#22c55e")
-        layout.addWidget(self._focus_time_cap)
+        # ── 2. 状态信息（可折叠） ──
+        s2 = CollapsibleSection("STATUS")
+        self._distraction_cap = CapsuleLabel("0 distractions", "#fbbf24")
+        s2.content_layout().addWidget(self._distraction_cap)
+        self._state_cap = CapsuleLabel("Idle", "#9ca3af")
+        s2.content_layout().addWidget(self._state_cap)
+        self._focus_time_cap = CapsuleLabel("Focus Time: 0s", "#4ade80")
+        s2.content_layout().addWidget(self._focus_time_cap)
+        layout.addWidget(s2)
 
         # ── 3. 时序图 ──
-        s3 = _section("FOCUS TIMELINE (60s)")
+        s3 = CollapsibleSection("FOCUS TIMELINE (60s)")
         self._timeline = FocusTimeline()
-        s3.layout().addWidget(self._timeline)
+        s3.content_layout().addWidget(self._timeline)
         layout.addWidget(s3)
 
-        # ── 4. 贡献网格 ──
-        s4 = _section("FOCUS HISTORY")
+        # ── 4. 贡献网格（含纵向滚动） ──
+        s4 = CollapsibleSection("FOCUS HISTORY")
         self._grid = ContributionGrid()
-        s4.layout().addWidget(self._grid)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(self._grid)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        s4.content_layout().addWidget(scroll)
         layout.addWidget(s4)
 
         # ── 5. 分心记录 ──
-        s5 = _section("DISTRACTION RECORDS")
+        s5 = CollapsibleSection("DISTRACTION RECORDS")
         self._dist_table = DistractionTable()
-        s5.layout().addWidget(self._dist_table)
+        s5.content_layout().addWidget(self._dist_table)
         layout.addWidget(s5)
 
         layout.addStretch()
@@ -245,7 +293,7 @@ class StatisticsWidget(QWidget):
         total_str = str(elapsed)
         focus_str = str(self._focused_seconds)
         self._focus_time_cap.setText(f"Focus Time: {focus_str}s / {total_str}s")
-        self._focus_time_cap._apply("#22c55e" if self._last_tick_focused else "#6b7280")
+        self._focus_time_cap._apply("#4ade80" if self._last_tick_focused else "#9ca3af")
 
     # ── 公开 API ──
 
@@ -277,16 +325,16 @@ class StatisticsWidget(QWidget):
         raw = state_text.replace("Status: ", "")
         if "Focused" in raw:
             self._last_tick_focused = True
-            self._state_cap.set_color("#22c55e")
+            self._state_cap.set_color("#4ade80")
         elif "Eyes Closed" in raw:
             self._last_tick_focused = False
-            self._state_cap.set_color("#f59e0b")  # 琥珀色 = 暂时分心
+            self._state_cap.set_color("#fbbf24")  # 暖黄 = 暂时分心
         elif "No Face" in raw:
             self._last_tick_focused = False
-            self._state_cap.set_color("#ef4444")  # 红色 = 离席
+            self._state_cap.set_color("#f87171")  # 柔红 = 离席
         else:
             self._last_tick_focused = False
-            self._state_cap.set_color("#6b7280")
+            self._state_cap.set_color("#9ca3af")
         self._state_cap.setText(raw)
 
     def add_distraction_entry(self, duration: float):
