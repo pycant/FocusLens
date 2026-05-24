@@ -56,7 +56,7 @@ class SettingsDialog(QDialog):
         )
         eye_hbox.addWidget(self._eye_slider)
         eye_hbox.addWidget(self._eye_value_label)
-        eye_hbox.addWidget(QLabel("(越小越敏感)"))
+        eye_hbox.addWidget(QLabel("(越大越敏感)"))
         det_layout.addRow("眼睛敏感度:", eye_hbox)
 
         # 分心程度阈值
