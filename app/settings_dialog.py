@@ -74,6 +74,11 @@ class SettingsDialog(QDialog):
         degree_hbox.addWidget(self._degree_label)
         det_layout.addRow("分心程度阈值:", degree_hbox)
 
+        # 无人脸是否算分心
+        self._no_face_cb = QCheckBox("No face detected counts as distraction")
+        self._no_face_cb.setChecked(self._settings.no_face_is_distraction)
+        det_layout.addRow("", self._no_face_cb)
+
         # 分心权重
         det_layout.addRow(
             "闭眼权重:",
@@ -175,6 +180,7 @@ class SettingsDialog(QDialog):
         self._settings.distraction_time_threshold = self._time_spin.value()
         self._settings.eye_openness_threshold = self._eye_slider.value() / 1000.0
         self._settings.distraction_degree_threshold = float(self._degree_slider.value())
+        self._settings.no_face_is_distraction = self._no_face_cb.isChecked()
         self._settings.alert_method = self._alert_method.currentData()
         self._settings.alert_cooldown = self._cooldown_spin.value()
         self._settings.feedback_action = self._feedback_combo.currentData()
@@ -190,6 +196,7 @@ class SettingsDialog(QDialog):
         self._time_spin.setValue(default.distraction_time_threshold)
         self._eye_slider.setValue(int(default.eye_openness_threshold * 1000))
         self._degree_slider.setValue(int(default.distraction_degree_threshold))
+        self._no_face_cb.setChecked(default.no_face_is_distraction)
         idx = self._alert_method.findData(default.alert_method)
         if idx >= 0:
             self._alert_method.setCurrentIndex(idx)

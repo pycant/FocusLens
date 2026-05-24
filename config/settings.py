@@ -31,6 +31,7 @@ class FocusCamSettings:
     distraction_time_threshold: float = 2.0  # 闭眼/无人脸持续几秒算分心（1-10秒）
     eye_openness_threshold: float = 0.015    # 眼睛睁开敏感度（0.005-0.05）
     distraction_degree_threshold: float = 50.0  # 分心程度阈值(0-100)，超过此值触发提醒
+    no_face_is_distraction: bool = True     # 无人脸是否算分心
 
     # --- 分心程度权重 ---
     eyes_closed_weight: float = 1.0     # 闭眼分心权重

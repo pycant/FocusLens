@@ -52,22 +52,15 @@ class DetectionWorker(QThread):
         self._engine.on_distraction_end = self._on_distraction_end
         self._engine.on_alert = self._on_alert
 
-        # 信号限流：防止主线程来不及处理
-        self._frame_skip_counter = 0
-        self._alert_pending = False
-
     def _on_distraction_start(self, event):
         self.distraction_start.emit(event.degree, event.duration)
 
     def _on_distraction_end(self):
-        self._alert_pending = False
         self.distraction_end.emit()
 
     def _on_alert(self, event):
-        # 限流：如果上一个提醒还没处理完，跳过
-        if not self._alert_pending:
-            self._alert_pending = True
-            self.distraction_alert.emit(event.degree, event.duration)
+        # 警报限流由 DistractionEngine.alert_cooldown 控制
+        self.distraction_alert.emit(event.degree, event.duration)
 
     def run(self):
         _log_debug("[WORKER] started")
@@ -119,14 +112,10 @@ class DetectionWorker(QThread):
                             "red",
                         )
 
-                    # 每 3 帧发一次画面（降低信号频率）
-                    self._frame_skip_counter += 1
-                    if self._frame_skip_counter >= 3:
-                        self._frame_skip_counter = 0
-                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        h, w, ch = rgb.shape
-                        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
-                        self.frame_ready.emit(qimg.copy())  # copy() 确保数据独立
+                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    h, w, ch = rgb.shape
+                    qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
+                    self.frame_ready.emit(qimg.copy())  # copy() 确保数据独立
 
                     self.msleep(30)
 
@@ -142,7 +131,6 @@ class DetectionWorker(QThread):
         finally:
             _log_debug("[WORKER] cleanup start")
             self._cleanup()
-            self._alert_pending = False
             _log_debug("[WORKER] cleanup done")
 
     def _cleanup(self):

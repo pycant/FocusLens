@@ -308,13 +308,20 @@ class MainWindow(QMainWindow):
         pass
 
     def _play_alert_sound(self):
-        """播放提示音 — 简单可靠"""
+        """播放提示音 — WAV → Beep 回退"""
         try:
             import winsound
-            winsound.Beep(880, 120)
-            winsound.Beep(660, 120)
+            path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "resources", "sounds", "alert.wav",
+            )
+            if os.path.exists(path):
+                winsound.PlaySound(path, winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+            else:
+                winsound.Beep(880, 120)
+                winsound.Beep(660, 120)
         except Exception:
-            pass  # 声音失败不影响主程序
+            pass
 
     def _sync_stats(self):
         if self._camera_widget and self._camera_widget.worker:

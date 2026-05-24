@@ -83,7 +83,9 @@ class DistractionEngine:
 
         # 1. 状态转换
         if not face_detected:
-            self.current_state = FocusState.NO_FACE
+            if self.settings.no_face_is_distraction:
+                self.current_state = FocusState.NO_FACE
+            # else: 无人脸不算分心 → 保持当前状态不变
         elif not eyes_open:
             self.current_state = FocusState.EYES_CLOSED
         else:

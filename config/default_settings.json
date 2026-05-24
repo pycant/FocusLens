@@ -2,6 +2,7 @@
   "distraction_time_threshold": 2.0,
   "eye_openness_threshold": 0.015,
   "distraction_degree_threshold": 50.0,
+  "no_face_is_distraction": true,
   "eyes_closed_weight": 1.0,
   "no_face_weight": 1.5,
   "distraction_decay_rate": 2.0,
