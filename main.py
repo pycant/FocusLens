@@ -25,6 +25,8 @@ def main():
     )
 
     app = QApplication(sys.argv)
+    # Fusion 风格让 QPalette 正确生效（Windows 原生风格忽略调色板）
+    app.setStyle("Fusion")
     app.setApplicationName("FocusCam")
     app.setOrganizationName("FocusCam")
 
