@@ -1,0 +1,16 @@
+{
+  "distraction_time_threshold": 2.0,
+  "eye_openness_threshold": 0.015,
+  "distraction_degree_threshold": 50.0,
+  "eyes_closed_weight": 1.0,
+  "no_face_weight": 1.5,
+  "distraction_decay_rate": 2.0,
+  "alert_method": "toast_and_sound",
+  "alert_cooldown": 10.0,
+  "feedback_action": "continue",
+  "camera_id": 0,
+  "mirror_display": true,
+  "log_to_csv": true,
+  "log_to_db": false,
+  "dark_mode": false
+}
