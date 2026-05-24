@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QStatusBar, QApplication, QSplitter, QInputDialog,
     QLineEdit,
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QAction, QFont, QIcon
 
 from config.settings import FocusCamSettings
@@ -16,15 +16,28 @@ from app.settings_dialog import SettingsDialog
 from app.login_dialog import LoginDialog
 from app.distraction_overlay import DistractionOverlay
 from app.statistics_widget import StatisticsWidget
-from app.theme import apply_theme, THEMES, get_camera_bg, make_button_style
+from app.theme import apply_theme, THEMES, get_camera_bg, make_button_style, colored_icon, get_btn_color
 from utils.logger import DistractionLogger
 
 DEFAULT_USER = "Default User"
-ICONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "icons")
+_current_theme = "classic_light"
 
 
-def _icon(name: str) -> QIcon:
-    return QIcon(os.path.join(ICONS_DIR, f"{name}.svg"))
+def _lighten(hex_color: str, factor: float = 0.15) -> str:
+    """将 hex 颜色调亮 factor (0-1)"""
+    try:
+        r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+        r = min(255, int(r + (255 - r) * factor))
+        g = min(255, int(g + (255 - g) * factor))
+        b = min(255, int(b + (255 - b) * factor))
+        return f"#{r:02x}{g:02x}{b:02x}"
+    except Exception:
+        return hex_color
+
+
+def _icon(name: str, color_override: str | None = None) -> QIcon:
+    """主题感知彩色图标"""
+    return colored_icon(_current_theme, name, color_override)
 
 
 class MainWindow(QMainWindow):
@@ -39,6 +52,10 @@ class MainWindow(QMainWindow):
         # 配置和日志
         self._settings = FocusCamSettings.load()
         self._logger = DistractionLogger()
+
+        # 记录当前主题用于图标着色
+        global _current_theme
+        _current_theme = self._settings.theme_name
 
         # 自动使用上次登录用户（无需弹登录框）
         self._username = self._settings.last_username or DEFAULT_USER
@@ -125,20 +142,20 @@ class MainWindow(QMainWindow):
 
         self._start_btn = QPushButton(" Start Detection")
         self._start_btn.setIcon(_icon("play"))
-        self._start_btn.setIconSize(Qt.QSize(16, 16))
+        self._start_btn.setIconSize(QSize(16, 16))
         self._start_btn.clicked.connect(self._start_detection)
         cam_row.addWidget(self._start_btn)
 
         self._stop_btn = QPushButton(" Stop")
         self._stop_btn.setIcon(_icon("stop"))
-        self._stop_btn.setIconSize(Qt.QSize(16, 16))
+        self._stop_btn.setIconSize(QSize(16, 16))
         self._stop_btn.clicked.connect(self._stop_detection)
         self._stop_btn.setEnabled(False)
         cam_row.addWidget(self._stop_btn)
 
         self._settings_btn = QPushButton(" Settings")
         self._settings_btn.setIcon(_icon("settings"))
-        self._settings_btn.setIconSize(Qt.QSize(16, 16))
+        self._settings_btn.setIconSize(QSize(16, 16))
         self._settings_btn.clicked.connect(self._show_settings)
         cam_row.addWidget(self._settings_btn)
 
@@ -180,14 +197,22 @@ class MainWindow(QMainWindow):
         self._status_bar.addPermanentWidget(self._user_label)
 
     def _apply_widget_styles(self):
-        """根据当前主题更新按钮和摄像头背景色"""
-        theme = self._settings.theme_name
-        self._start_btn.setStyleSheet(make_button_style("#2b8a3e", "#2f9e44"))
-        self._stop_btn.setStyleSheet(make_button_style("#e8590c", "#f76707"))
-        self._settings_btn.setStyleSheet(make_button_style("#5c7cfa", "#748ffc"))
-        # 摄像头背景
+        """根据当前主题更新按钮、摄像头背景和图标色"""
+        global _current_theme
+        _current_theme = self._settings.theme_name
+        t = _current_theme
+        # 按钮背景色随主题变化
+        self._start_btn.setStyleSheet(make_button_style(get_btn_color(t, "start"), _lighten(get_btn_color(t, "start"))))
+        self._stop_btn.setStyleSheet(make_button_style(get_btn_color(t, "stop"), _lighten(get_btn_color(t, "stop"))))
+        self._settings_btn.setStyleSheet(make_button_style(get_btn_color(t, "settings"), _lighten(get_btn_color(t, "settings"))))
         if hasattr(self, "_camera_widget"):
-            self._camera_widget.set_bg_color(get_camera_bg(theme))
+            self._camera_widget.set_bg_color(get_camera_bg(t))
+        # 按钮图标保持白色
+        self._start_btn.setIcon(_icon("play", "#ffffff"))
+        self._stop_btn.setIcon(_icon("stop", "#ffffff"))
+        self._settings_btn.setIcon(_icon("settings", "#ffffff"))
+        if hasattr(self, "_user_icon"):
+            self._user_icon.setPixmap(_icon("user").pixmap(16, 16))
 
     def _update_user_label(self):
         name = self._username or DEFAULT_USER
@@ -278,6 +303,7 @@ class MainWindow(QMainWindow):
             a.setChecked(key == theme_name)
         apply_theme(QApplication.instance(), theme_name)
         self._apply_widget_styles()
+        self._settings.save()
         apply_theme(QApplication.instance(), theme_name)
         self._settings.save()
 

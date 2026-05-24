@@ -56,7 +56,14 @@ _COLORS = {
         "shadow": QColor(140, 140, 140),
         "accent": QColor(60, 140, 230),
         "surface": QColor(255, 255, 255),
-        "camera_bg": QColor(30, 30, 30),
+        "camera_bg": QColor(230, 230, 230),
+        "icon_focus": "#2563eb",
+        "icon_chart": "#059669",
+        "icon_user": "#4b5563",
+        "icon_alert": "#dc2626",
+        "btn_start": "#16a34a",
+        "btn_stop": "#ea580c",
+        "btn_settings": "#6366f1",
     },
     "dark": {
         "window": QColor(35, 39, 43),
@@ -82,6 +89,13 @@ _COLORS = {
         "accent": QColor(60, 120, 220),
         "surface": QColor(43, 48, 53),
         "camera_bg": QColor(20, 22, 25),
+        "icon_focus": "#60a5fa",
+        "icon_chart": "#34d399",
+        "icon_user": "#9ca3af",
+        "icon_alert": "#f87171",
+        "btn_start": "#16a34a",
+        "btn_stop": "#ea580c",
+        "btn_settings": "#3b82f6",
     },
     "midnight": {
         "window": QColor(22, 28, 43),
@@ -107,6 +121,13 @@ _COLORS = {
         "accent": QColor(60, 140, 240),
         "surface": QColor(28, 35, 55),
         "camera_bg": QColor(14, 18, 28),
+        "icon_focus": "#7dd3fc",
+        "icon_chart": "#6ee7b7",
+        "icon_user": "#cbd5e1",
+        "icon_alert": "#fca5a5",
+        "btn_start": "#22c55e",
+        "btn_stop": "#f97316",
+        "btn_settings": "#60a5fa",
     },
     "forest": {
         "window": QColor(30, 38, 30),
@@ -132,6 +153,13 @@ _COLORS = {
         "accent": QColor(60, 180, 80),
         "surface": QColor(38, 48, 38),
         "camera_bg": QColor(18, 24, 18),
+        "icon_focus": "#86efac",
+        "icon_chart": "#86efac",
+        "icon_user": "#a3e635",
+        "icon_alert": "#fca5a5",
+        "btn_start": "#4ade80",
+        "btn_stop": "#fb923c",
+        "btn_settings": "#818cf8",
     },
     "charcoal": {
         "window": QColor(25, 25, 25),
@@ -157,6 +185,13 @@ _COLORS = {
         "accent": QColor(200, 200, 200),
         "surface": QColor(33, 33, 33),
         "camera_bg": QColor(15, 15, 15),
+        "icon_focus": "#e5e7eb",
+        "icon_chart": "#e5e7eb",
+        "icon_user": "#d1d5db",
+        "icon_alert": "#fca5a5",
+        "btn_start": "#22c55e",
+        "btn_stop": "#fb923c",
+        "btn_settings": "#a5b4fc",
     },
 }
 
@@ -348,6 +383,61 @@ def apply_theme(app: QApplication, theme_name: str):
 def get_camera_bg(theme_name: str) -> str:
     c = _COLORS.get(theme_name, _COLORS["classic_light"])
     return c["camera_bg"].name()
+
+
+def get_btn_color(theme_name: str, btn: str) -> str:
+    """获取按钮颜色, btn: start/stop/settings"""
+    c = _COLORS.get(theme_name, _COLORS["classic_light"])
+    key = f"btn_{btn}"
+    return c.get(key, "#666666")
+
+
+def get_icon_color(theme_name: str, icon_name: str) -> str:
+    """获取图标在当前主题下的颜色"""
+    key = f"icon_{icon_name}"
+    c = _COLORS.get(theme_name, _COLORS["classic_light"])
+    if key in c:
+        return c[key]
+    return "#ffffff"
+
+
+def _render_svg(name: str, color: str):
+    """读取 SVG 模板，替换 currentColor 为目标色，返回字节"""
+    import os
+    path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "resources", "icons", f"{name}.svg",
+    )
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            svg = f.read()
+        svg = svg.replace("currentColor", color)
+        from PyQt6.QtCore import QByteArray
+        return QByteArray(svg.encode("utf-8"))
+    except Exception:
+        return QByteArray()
+
+
+def colored_icon(theme_name: str, icon_name: str, color_override: str | None = None) -> "QIcon":
+    """生成主题感知的彩色图标"""
+    from PyQt6.QtGui import QIcon
+    from PyQt6.QtSvg import QSvgRenderer
+    from PyQt6.QtGui import QPainter, QPixmap
+    from PyQt6.QtCore import QByteArray, QSize, Qt
+
+    color = color_override or get_icon_color(theme_name, icon_name)
+    data = _render_svg(icon_name, color)
+    if not data or data.isEmpty():
+        return QIcon()
+
+    renderer = QSvgRenderer(data)
+    size = QSize(24, 24)
+    pixmap = QPixmap(size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    renderer.render(painter)
+    painter.end()
+    return QIcon(pixmap)
 
 
 def make_button_style(base_color: str, hover_color: str, disabled_color: str = "#adb5bd") -> str:

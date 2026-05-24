@@ -37,14 +37,17 @@ class StatisticsWidget(QWidget):
         layout.setSpacing(4)
 
         title_row = QHBoxLayout()
-        icon_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "resources", "icons", "chart.svg",
-        )
-        title_icon = QLabel()
-        title_icon.setPixmap(QIcon(icon_path).pixmap(18, 18))
-        title_icon.setStyleSheet("background: transparent;")
-        title_row.addWidget(title_icon)
+        try:
+            from app.main_window import _current_theme as _ct
+            from app.theme import colored_icon as _ci
+            icon = _ci(_ct, "chart")
+        except Exception:
+            from PyQt6.QtGui import QIcon as _qi
+            icon = _qi()
+        ti = QLabel()
+        ti.setPixmap(icon.pixmap(18, 18))
+        ti.setStyleSheet("background: transparent;")
+        title_row.addWidget(ti)
         title = QLabel("Focus Statistics")
         title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         title_row.addWidget(title)
