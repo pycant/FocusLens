@@ -26,7 +26,7 @@ FEEDBACK_ACTIONS = {
 
 
 @dataclass
-class FocusCamSettings:
+class FocusLensSettings:
     # --- 分心检测参数 ---
     distraction_time_threshold: float = 2.0  # 闭眼/无人脸持续几秒算分心（1-10秒）
     eye_openness_threshold: float = 0.015    # 眼睛睁开敏感度（0.005-0.05）
@@ -69,7 +69,7 @@ class FocusCamSettings:
     side_panel_visible: bool = True
 
     @classmethod
-    def load(cls) -> "FocusCamSettings":
+    def load(cls) -> "FocusLensSettings":
         path = USER_CONFIG_PATH if os.path.exists(USER_CONFIG_PATH) else DEFAULT_CONFIG_PATH
         if not os.path.exists(path):
             return cls()

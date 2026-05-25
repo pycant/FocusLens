@@ -1,4 +1,4 @@
-"""FocusCam 多主题系统 — 每个主题含 QPalette + QSS"""
+"""FocusLens 多主题系统 — 每个主题含 QPalette + QSS"""
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QPalette, QColor

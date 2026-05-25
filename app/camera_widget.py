@@ -12,7 +12,7 @@ from PyQt6.QtGui import QImage, QPixmap
 from core.detector import EyeDetector
 from core.distraction_engine import DistractionEngine, FocusState
 from core.camera_manager import CameraManager
-from config.settings import FocusCamSettings
+from config.settings import FocusLensSettings
 
 # 崩溃日志文件（用于捕获 C++ 层闪退）
 _CRASH_LOG = os.path.join(
@@ -40,7 +40,7 @@ class DetectionWorker(QThread):
     distraction_end = pyqtSignal()
     thread_error = pyqtSignal(str)
 
-    def __init__(self, settings: FocusCamSettings, parent=None):
+    def __init__(self, settings: FocusLensSettings, parent=None):
         super().__init__(parent)
         self.settings = settings
         self._running = False
@@ -146,7 +146,7 @@ class DetectionWorker(QThread):
         if not self.wait(2000):
             self.terminate()
 
-    def update_settings(self, settings: FocusCamSettings):
+    def update_settings(self, settings: FocusLensSettings):
         self.settings = settings
         self._engine.settings = settings
         if self._camera.camera_id != settings.camera_id:
@@ -178,7 +178,7 @@ class CameraWidget(QWidget):
         self._video_label.setMinimumSize(640, 480)
         layout.addWidget(self._video_label)
 
-    def start_detection(self, settings: FocusCamSettings):
+    def start_detection(self, settings: FocusLensSettings):
         self.stop_detection()
         self._worker = DetectionWorker(settings)
         self._worker.frame_ready.connect(self._display_frame)
@@ -194,7 +194,7 @@ class CameraWidget(QWidget):
         self._video_label.clear()
 
     def _on_thread_error(self, msg: str):
-        print(f"[FocusCam Worker Error] {msg}")
+        print(f"[FocusLens Worker Error] {msg}")
         self.stop_detection()
 
     def _display_frame(self, qimg: QImage):

@@ -1,5 +1,5 @@
--- CREATE DATABASE focuscam CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE focuscam;
+-- CREATE DATABASE focuslens CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE focuslens;
 
 -- CREATE TABLE USERS (
 --     id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,

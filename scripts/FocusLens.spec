@@ -23,7 +23,7 @@ a = Analysis(
     datas=[
         (os.path.join(ROOT, "resources", "icons"), "resources/icons"),
         (os.path.join(ROOT, "resources", "sounds"), "resources/sounds"),
-        (os.path.join(ROOT, "resources", "focuscam.sql"), "resources"),
+        (os.path.join(ROOT, "resources", "focuslens.sql"), "resources"),
         (os.path.join(ROOT, "resources", "haarcascade_frontalface_default.xml"), "resources"),
         (os.path.join(ROOT, "resources", "haarcascade_eye.xml"), "resources"),
         (os.path.join(ROOT, "config", "default_settings.json"), "config"),

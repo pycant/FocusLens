@@ -1,4 +1,4 @@
-"""眼睛检测核心算法 — 从原 FocusCam 移植
+"""眼睛检测核心算法 — 从原 FocusLens 移植
 
 保留原始的 MediaPipe FaceMesh 检测逻辑，
 支持可配置的眼睛睁开敏感度阈值。

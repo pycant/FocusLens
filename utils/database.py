@@ -1,4 +1,4 @@
-"""MySQL 数据库操作 — 从原项目 login_capture.py 移植"""
+"""MySQL 数据库操作 — 用户认证"""
 import os
 import cv2 as cv
 import mysql.connector
@@ -8,7 +8,7 @@ DB_CONFIG = {
     "host": "localhost",
     "user": "root",
     "password": "qwert123",
-    "database": "focuscam",
+    "database": "focuslens",
     "charset": "utf8mb4",
 }
 

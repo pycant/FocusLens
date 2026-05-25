@@ -7,19 +7,19 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from config.settings import FocusCamSettings, ALERT_METHODS, FEEDBACK_ACTIONS
+from config.settings import FocusLensSettings, ALERT_METHODS, FEEDBACK_ACTIONS
 from app.theme import THEMES
 
 
 class SettingsDialog(QDialog):
     """设置对话框 — 自定义所有检测和提醒参数"""
 
-    def __init__(self, settings: FocusCamSettings, parent=None):
+    def __init__(self, settings: FocusLensSettings, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("FocusCam Settings")
+        self.setWindowTitle("FocusLens Settings")
         self.setMinimumWidth(520)
         self._original = settings
-        self._settings = FocusCamSettings(
+        self._settings = FocusLensSettings(
             **{k: v for k, v in vars(settings).items() if not k.startswith("_")}
         )
         self._build_ui()
@@ -197,7 +197,7 @@ class SettingsDialog(QDialog):
         self.accept()
 
     def _reset_defaults(self):
-        default = FocusCamSettings()
+        default = FocusLensSettings()
         self._time_spin.setValue(default.distraction_time_threshold)
         self._eye_slider.setValue(int(default.eye_openness_threshold * 1000))
         self._degree_slider.setValue(int(default.distraction_degree_threshold))
@@ -216,5 +216,5 @@ class SettingsDialog(QDialog):
         if idx >= 0:
             self._theme_combo.setCurrentIndex(idx)
 
-    def get_settings(self) -> FocusCamSettings:
+    def get_settings(self) -> FocusLensSettings:
         return self._settings

@@ -90,7 +90,7 @@ The Focus History grid reads from this database to show your 6-week contribution
 
 ### MySQL — User Accounts (optional)
 
-User registration and login require a MySQL server. The schema is provided in `resources/focuscam.sql`.
+User registration and login require a MySQL server. The schema is provided in `resources/focuslens.sql`.
 
 ```sql
 -- users table (auto-created by the app if it doesn't exist)
@@ -104,7 +104,7 @@ CREATE TABLE users (
 
 **Setup steps:**
 
-1. Install MySQL server and create a database (e.g., `focuscam_db`)
+1. Install MySQL server and create a database (e.g., `focuslens_db`)
 2. Update `utils/database.py` with your MySQL credentials
 3. Run the app — tables are created automatically
 

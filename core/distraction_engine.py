@@ -11,7 +11,7 @@ import time
 from enum import Enum
 from typing import Optional, Callable
 
-from config.settings import FocusCamSettings
+from config.settings import FocusLensSettings
 
 
 class FocusState(Enum):
@@ -39,7 +39,7 @@ class DistractionEngine:
         EYES_CLOSED/NO_FACE → (恢复) → FOCUSED
     """
 
-    def __init__(self, settings: FocusCamSettings):
+    def __init__(self, settings: FocusLensSettings):
         self.settings = settings
 
         # 状态

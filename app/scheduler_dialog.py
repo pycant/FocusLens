@@ -8,10 +8,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from config.settings import FocusCamSettings
+from config.settings import FocusLensSettings
 
 
-def set_auto_start(enabled: bool, app_name="FocusCam"):
+def set_auto_start(enabled: bool, app_name="FocusLens"):
     """Windows 开机自启：创建/删除 快捷方式到 Startup 文件夹"""
     try:
         startup = os.path.join(os.environ.get("APPDATA", ""),
@@ -38,7 +38,7 @@ def set_auto_start(enabled: bool, app_name="FocusCam"):
 class SchedulerDialog(QDialog):
     """自动化任务配置对话框"""
 
-    def __init__(self, settings: FocusCamSettings, parent=None):
+    def __init__(self, settings: FocusLensSettings, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Automation Settings")
         self.setMinimumWidth(400)
@@ -53,7 +53,7 @@ class SchedulerDialog(QDialog):
         # ── 开机自启 ──
         boot_group = QGroupBox("Auto Start on Boot")
         boot_layout = QVBoxLayout(boot_group)
-        self._auto_boot_cb = QCheckBox("Launch FocusCam when Windows starts")
+        self._auto_boot_cb = QCheckBox("Launch FocusLens when Windows starts")
         self._auto_boot_cb.setChecked(self._settings.auto_start_on_boot)
         boot_layout.addWidget(self._auto_boot_cb)
         layout.addWidget(boot_group)
@@ -165,5 +165,5 @@ class SchedulerDialog(QDialog):
         self._settings.save()
         self.accept()
 
-    def get_settings(self) -> FocusCamSettings:
+    def get_settings(self) -> FocusLensSettings:
         return self._settings

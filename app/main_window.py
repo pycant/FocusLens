@@ -1,4 +1,4 @@
-"""FocusCam 主窗口 — PyQt6 桌面应用"""
+"""FocusLens 主窗口 — PyQt6 桌面应用"""
 import os, datetime, time as _time
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QAction, QFont, QIcon
 
-from config.settings import FocusCamSettings
+from config.settings import FocusLensSettings
 from core.camera_manager import get_available_cameras
 from app.camera_widget import CameraWidget
 from app.settings_dialog import SettingsDialog
@@ -42,15 +42,15 @@ def _icon(name: str, color_override: str | None = None) -> QIcon:
 
 
 class MainWindow(QMainWindow):
-    """FocusCam 主窗口"""
+    """FocusLens 主窗口"""
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("FocusCam")
+        self.setWindowTitle("FocusLens")
         self.setWindowIcon(_icon("focus"))
         self.setMinimumSize(900, 620)
 
-        self._settings = FocusCamSettings.load()
+        self._settings = FocusLensSettings.load()
         self._logger = DistractionLogger()
 
         global _current_theme
@@ -125,7 +125,7 @@ class MainWindow(QMainWindow):
 
         # Help
         help_menu = mb.addMenu("Help")
-        ab = QAction("About FocusCam", self)
+        ab = QAction("About FocusLens", self)
         ab.triggered.connect(self._show_about)
         help_menu.addAction(ab)
 
@@ -365,8 +365,8 @@ class MainWindow(QMainWindow):
     # ── 帮助 ──
 
     def _show_about(self):
-        QMessageBox.about(self, "About FocusCam",
-            "FocusCam v2.0\n\n"
+        QMessageBox.about(self, "About FocusLens",
+            "FocusLens v2.0\n\n"
             "Real-time distraction detection using\n"
             "MediaPipe FaceMesh & OpenCV.\n\n"
             "Built with PyQt6 · Fusion Style\n"
@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
                 self._logger.log(f"Distraction: {state}", degree, duration)
         except Exception as e:
             import traceback
-            print(f"[FocusCam] Alert error: {e}\n{traceback.format_exc()}")
+            print(f"[FocusLens] Alert error: {e}\n{traceback.format_exc()}")
 
     def _on_distraction_start(self, degree: float, duration: float):
         self._stats_widget.increment_distraction()
@@ -412,7 +412,7 @@ class MainWindow(QMainWindow):
     def _on_worker_error(self, msg: str):
         self._stop_detection()
         self._status_bar.showMessage("Detection stopped (error)")
-        print(f"[FocusCam] Worker error: {msg}")
+        print(f"[FocusLens] Worker error: {msg}")
 
     def _on_distraction_end(self):
         pass

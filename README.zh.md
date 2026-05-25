@@ -90,7 +90,7 @@ focus_log 表结构：
 
 ### MySQL — 用户账户（可选）
 
-用户注册和登录功能需要 MySQL 服务器支持。数据库建表脚本位于 `resources/focuscam.sql`。
+用户注册和登录功能需要 MySQL 服务器支持。数据库建表脚本位于 `resources/focuslens.sql`。
 
 ```sql
 -- users 表（应用启动时自动创建）
@@ -104,7 +104,7 @@ CREATE TABLE users (
 
 **配置步骤：**
 
-1. 安装 MySQL 服务器并创建数据库（例如 `focuscam_db`）
+1. 安装 MySQL 服务器并创建数据库（例如 `focuslens_db`）
 2. 修改 `utils/database.py` 中的 MySQL 连接信息
 3. 启动应用——数据表会自动创建
 

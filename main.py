@@ -1,4 +1,4 @@
-"""FocusCam — 专注力检测桌面应用
+"""FocusLens — 专注力检测桌面应用
 
 基于 OpenCV, MediaPipe, PyQt6 构建。
 替代原 tkinter 版本，提供可配置的分心检测参数和非模态提醒。
@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from config.settings import FocusCamSettings
+from config.settings import FocusLensSettings
 from app.main_window import MainWindow
 from app.theme import apply_theme
 
@@ -27,15 +27,15 @@ def main():
     app = QApplication(sys.argv)
     # Fusion 风格让 QPalette 正确生效（Windows 原生风格忽略调色板）
     app.setStyle("Fusion")
-    app.setApplicationName("FocusCam")
-    app.setOrganizationName("FocusCam")
+    app.setApplicationName("FocusLens")
+    app.setOrganizationName("FocusLens")
 
     # 全局字体
     font = QFont("Microsoft YaHei UI", 9)
     app.setFont(font)
 
     # 加载已保存的主题设置
-    settings = FocusCamSettings.load()
+    settings = FocusLensSettings.load()
     apply_theme(app, settings.theme_name)
 
     window = MainWindow()
